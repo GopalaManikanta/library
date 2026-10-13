@@ -1,100 +1,368 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { BookOpen, LogOut, User, Mail, Shield, Calendar } from 'lucide-react';
+import {
+  BookOpen,
+  LogOut,
+  Users,
+  BookMarked,
+  CheckCircle2,
+  AlertTriangle,
+  Layers,
+  IndianRupee,
+  PlusCircle,
+  UserPlus,
+  ArrowUpRight,
+  ArrowDownLeft,
+  Clock,
+  LayoutDashboard,
+  Menu,
+  X,
+  Activity
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useLibrary } from '../context/LibraryContext';
 
 export const Dashboard = () => {
   const { currentUser, logout } = useAuth();
+  const { metrics, activities } = useLibrary();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
-    toast.info('Logged out');
+    toast.info('Logged out successfully');
     navigate('/login');
   };
 
+  const statCards = [
+    {
+      title: 'Total Books',
+      value: metrics.totalBooks,
+      subtitle: 'Total volumes in catalog',
+      icon: BookOpen,
+      iconBg: 'bg-teal-50 text-teal-600 border-teal-100',
+      accentBorder: 'hover:border-teal-300',
+    },
+    {
+      title: 'Total Members',
+      value: metrics.totalMembers,
+      subtitle: 'Registered library members',
+      icon: Users,
+      iconBg: 'bg-indigo-50 text-indigo-600 border-indigo-100',
+      accentBorder: 'hover:border-indigo-300',
+    },
+    {
+      title: 'Books Issued',
+      value: metrics.booksIssued,
+      subtitle: 'Currently borrowed books',
+      icon: BookMarked,
+      iconBg: 'bg-sky-50 text-sky-600 border-sky-100',
+      accentBorder: 'hover:border-sky-300',
+    },
+    {
+      title: 'Books Available',
+      value: metrics.booksAvailable,
+      subtitle: 'Ready on library shelves',
+      icon: CheckCircle2,
+      iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-100',
+      accentBorder: 'hover:border-emerald-300',
+    },
+    {
+      title: 'Overdue Books',
+      value: metrics.overdueBooks,
+      subtitle: 'Past due return date',
+      icon: AlertTriangle,
+      iconBg: 'bg-rose-50 text-rose-600 border-rose-100',
+      accentBorder: 'hover:border-rose-300',
+    },
+    {
+      title: 'Total Categories',
+      value: metrics.totalCategories,
+      subtitle: 'Book subject classifications',
+      icon: Layers,
+      iconBg: 'bg-purple-50 text-purple-600 border-purple-100',
+      accentBorder: 'hover:border-purple-300',
+    },
+    {
+      title: 'Fine Collected',
+      value: `₹${Number(metrics.fineCollected).toLocaleString('en-IN')}`,
+      subtitle: 'Total overdue fines collected',
+      icon: IndianRupee,
+      iconBg: 'bg-amber-50 text-amber-600 border-amber-100',
+      accentBorder: 'hover:border-amber-300',
+    },
+  ];
+
+  const quickActions = [
+    {
+      title: 'Add New Book',
+      description: 'Register a new book volume into library inventory',
+      icon: PlusCircle,
+      color: 'bg-teal-50 text-teal-700 border-teal-200/80',
+    },
+    {
+      title: 'Issue Book',
+      description: 'Assign an available book to a registered member',
+      icon: ArrowUpRight,
+      color: 'bg-sky-50 text-sky-700 border-sky-200/80',
+    },
+    {
+      title: 'Return Book',
+      description: 'Process book return and update shelf availability',
+      icon: ArrowDownLeft,
+      color: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+    },
+    {
+      title: 'Add Member',
+      description: 'Enrol a new student or faculty member account',
+      icon: UserPlus,
+      color: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col">
-      {/* Navbar */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-teal-600 flex items-center justify-center text-white">
-              <BookOpen className="w-5 h-5" />
+    <div className="h-screen overflow-hidden bg-[#f8fafc] text-slate-800 flex font-sans">
+      
+      {/* Mobile Sidebar Backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 lg:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* ================= STICKY/LOCKED SIDEBAR (NEVER SCROLLS) ================= */}
+      <aside
+        className={`fixed lg:sticky lg:top-0 inset-y-0 left-0 z-50 w-64 h-screen shrink-0 overflow-hidden bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ${
+          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        <div>
+          {/* Brand Logo */}
+          <div className="h-16 px-6 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-600 to-emerald-600 flex items-center justify-center text-white shadow-sm">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="font-black text-lg tracking-tight text-slate-900 block leading-none">
+                  Libra<span className="text-teal-600">Flow</span>
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  LMS Portal
+                </span>
+              </div>
             </div>
-            <span className="font-bold text-lg text-slate-900">
-              Libra<span className="text-teal-600">Flow</span>
-            </span>
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="lg:hidden p-1.5 text-slate-400 hover:text-slate-700"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
+          {/* Sidebar Navigation — Only Dashboard */}
+          <div className="p-4">
+            <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200/70 shadow-2xs">
+              <LayoutDashboard className="w-4 h-4 text-teal-600" />
+              <span>Dashboard</span>
+            </div>
+          </div>
+        </div>
+
+        {/* User Info & Logout */}
+        <div className="p-4 border-t border-slate-200 bg-slate-50/50">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl bg-teal-600 text-white font-bold text-sm flex items-center justify-center">
+              {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-bold text-slate-900 truncate">{currentUser?.name}</p>
+              <p className="text-[11px] text-teal-700 font-semibold truncate">{currentUser?.role || 'Admin'}</p>
+            </div>
+          </div>
           <button
             onClick={handleLogout}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+            className="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-3.5 h-3.5" />
             <span>Logout</span>
           </button>
         </div>
-      </header>
+      </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 max-w-4xl w-full mx-auto px-6 py-12 flex items-center justify-center">
-        <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl p-8 shadow-xs text-center">
-          {/* User Avatar */}
-          <div className="w-16 h-16 rounded-full bg-teal-50 text-teal-700 font-bold text-2xl flex items-center justify-center mx-auto mb-4 border border-teal-100">
-            {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
-          </div>
-
-          <h1 className="text-xl font-bold text-slate-900">
-            Welcome, {currentUser?.name}!
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            You are successfully authenticated.
-          </p>
-
-          {/* Account Details */}
-          <div className="mt-6 pt-6 border-t border-slate-100 space-y-3 text-left text-xs">
-            <div className="flex items-center justify-between py-1">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5" /> Full Name
-              </span>
-              <span className="font-semibold text-slate-800">{currentUser?.name}</span>
-            </div>
-
-            <div className="flex items-center justify-between py-1">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5" /> Email
-              </span>
-              <span className="font-semibold text-slate-800">{currentUser?.email}</span>
-            </div>
-
-            <div className="flex items-center justify-between py-1">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5" /> Role
-              </span>
-              <span className="font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded">
-                {currentUser?.role || 'Member'}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between py-1">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" /> Member Since
-              </span>
-              <span className="font-semibold text-slate-800">{currentUser?.joinedDate || 'Today'}</span>
+      {/* ================= MAIN CONTENT AREA (SCROLLABLE INDEPENDENTLY) ================= */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+        
+        {/* Top Header */}
+        <header className="h-16 shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+                Dashboard
+              </h1>
+              <p className="text-[11px] text-slate-500 hidden sm:block">
+                Welcome back, {currentUser?.name}
+              </p>
             </div>
           </div>
 
-          {/* Action */}
-          <button
-            onClick={handleLogout}
-            className="w-full mt-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition cursor-pointer"
-          >
-            Sign Out
-          </button>
-        </div>
-      </main>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200">
+              <div className="w-7 h-7 rounded-lg bg-teal-600 text-white font-bold text-xs flex items-center justify-center">
+                {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div className="hidden sm:block text-left">
+                <p className="text-xs font-bold text-slate-800 leading-none">{currentUser?.name}</p>
+                <p className="text-[10px] text-teal-700 font-semibold mt-0.5">{currentUser?.role || 'Admin'}</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Dashboard Body */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-8">
+          
+          {/* ================= 1. DASHBOARD SUMMARY METRIC CARDS (7 ITEMS) ================= */}
+          <section>
+            <div className="mb-4">
+              <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                Library Overview
+              </h2>
+              <p className="text-xs text-slate-500">
+                Real-time summary of books, members, circulation, categories, and fines
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {statCards.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <div
+                    key={item.title}
+                    className={`bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs transition ${item.accentBorder}`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                        {item.title}
+                      </span>
+                      <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${item.iconBg}`}>
+                        <IconComponent className="w-5 h-5" />
+                      </div>
+                    </div>
+                    <p className="text-3xl font-black text-slate-900 tracking-tight">
+                      {item.value}
+                    </p>
+                    <p className="text-xs text-slate-500 font-medium mt-1.5">
+                      {item.subtitle}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* ================= 2. QUICK ACTION CARDS ================= */}
+          <section>
+            <div className="mb-4">
+              <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                Quick Action Cards
+              </h2>
+              <p className="text-xs text-slate-500">
+                Core library shortcuts for daily operations
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {quickActions.map((action) => {
+                const ActionIcon = action.icon;
+                return (
+                  <div
+                    key={action.title}
+                    className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-start gap-4"
+                  >
+                    <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${action.color}`}>
+                      <ActionIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-slate-900">
+                        {action.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        {action.description}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* ================= 3. RECENT ACTIVITIES ================= */}
+          <section>
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs">
+              <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
+                <div>
+                  <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
+                    Recent Activities
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Real-time log of actions performed across the library system
+                  </p>
+                </div>
+                <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[11px] font-bold">
+                  {activities.length} Records
+                </span>
+              </div>
+
+              {activities.length === 0 ? (
+                <div className="py-12 text-center bg-slate-50/60 rounded-xl border border-dashed border-slate-200">
+                  <div className="w-11 h-11 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-700">No recent activities yet</p>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Whenever books, members, categories, or issues are added or updated, those activities will automatically appear here in real time.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {activities.map((act) => (
+                    <div
+                      key={act.id}
+                      className="py-3.5 flex items-center justify-between gap-4"
+                    >
+                      <div>
+                        <p className="text-xs font-extrabold text-slate-900">{act.title}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{act.description}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        {act.badge && (
+                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-200">
+                            {act.badge}
+                          </span>
+                        )}
+                        <p className="text-[11px] text-slate-400 mt-1 flex items-center justify-end gap-1">
+                          <Clock className="w-3 h-3" />
+                          {act.timestamp}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+        </main>
+      </div>
     </div>
   );
 };
