@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { Link } from 'react-router-dom';
 import {
   BookOpen,
-  LogOut,
   Users,
   BookMarked,
   CheckCircle2,
@@ -15,34 +13,27 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Clock,
-  LayoutDashboard,
   Menu,
-  X,
-  Activity
+  Activity,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
+import { Sidebar } from '../components/Sidebar';
 
 export const Dashboard = () => {
-  const { currentUser, logout } = useAuth();
-  const { metrics, activities } = useLibrary();
-  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const { activities, metrics } = useLibrary();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const handleLogout = () => {
-    logout();
-    toast.info('Logged out successfully');
-    navigate('/login');
-  };
 
   const statCards = [
     {
       title: 'Total Books',
       value: metrics.totalBooks,
-      subtitle: 'Total volumes in catalog',
+      subtitle: `${metrics.totalCopies || metrics.totalBooks} total copies in catalog`,
       icon: BookOpen,
       iconBg: 'bg-teal-50 text-teal-600 border-teal-100',
       accentBorder: 'hover:border-teal-300',
+      link: '/books',
     },
     {
       title: 'Total Members',
@@ -55,7 +46,7 @@ export const Dashboard = () => {
     {
       title: 'Books Issued',
       value: metrics.booksIssued,
-      subtitle: 'Currently borrowed books',
+      subtitle: `${metrics.booksIssued} active borrowing ${metrics.booksIssued === 1 ? 'record' : 'records'}`,
       icon: BookMarked,
       iconBg: 'bg-sky-50 text-sky-600 border-sky-100',
       accentBorder: 'hover:border-sky-300',
@@ -63,10 +54,11 @@ export const Dashboard = () => {
     {
       title: 'Books Available',
       value: metrics.booksAvailable,
-      subtitle: 'Ready on library shelves',
+      subtitle: `${metrics.totalAvailableCopies || metrics.booksAvailable} copies ready on shelves`,
       icon: CheckCircle2,
       iconBg: 'bg-emerald-50 text-emerald-600 border-emerald-100',
       accentBorder: 'hover:border-emerald-300',
+      link: '/books',
     },
     {
       title: 'Overdue Books',
@@ -79,15 +71,16 @@ export const Dashboard = () => {
     {
       title: 'Total Categories',
       value: metrics.totalCategories,
-      subtitle: 'Book subject classifications',
+      subtitle: 'Subject classifications',
       icon: Layers,
       iconBg: 'bg-purple-50 text-purple-600 border-purple-100',
       accentBorder: 'hover:border-purple-300',
+      link: '/books',
     },
     {
       title: 'Fine Collected',
       value: `₹${Number(metrics.fineCollected).toLocaleString('en-IN')}`,
-      subtitle: 'Total overdue fines collected',
+      subtitle: 'Overdue fines collected',
       icon: IndianRupee,
       iconBg: 'bg-amber-50 text-amber-600 border-amber-100',
       accentBorder: 'hover:border-amber-300',
@@ -96,106 +89,41 @@ export const Dashboard = () => {
 
   const quickActions = [
     {
-      title: 'Add New Book',
-      description: 'Register a new book volume into library inventory',
+      title: 'Manage Books',
+      description: 'View catalog, filter, search, add, edit, or inspect volumes',
       icon: PlusCircle,
       color: 'bg-teal-50 text-teal-700 border-teal-200/80',
+      link: '/books',
+      clickable: true,
     },
     {
       title: 'Issue Book',
-      description: 'Assign an available book to a registered member',
+      description: 'Assign available books to registered library members',
       icon: ArrowUpRight,
       color: 'bg-sky-50 text-sky-700 border-sky-200/80',
+      badge: 'Circulation Desk',
     },
     {
       title: 'Return Book',
-      description: 'Process book return and update shelf availability',
+      description: 'Process book returns and update shelf inventory',
       icon: ArrowDownLeft,
       color: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+      badge: 'Shelf Inventory',
     },
     {
       title: 'Add Member',
-      description: 'Enrol a new student or faculty member account',
+      description: 'Register student or faculty profiles into the system',
       icon: UserPlus,
       color: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
+      badge: 'Directory',
     },
   ];
 
   return (
     <div className="h-screen overflow-hidden bg-[#f8fafc] text-slate-800 flex font-sans">
-      
-      {/* Mobile Sidebar Backdrop */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 lg:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
+      <Sidebar mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
 
-      {/* ================= STICKY/LOCKED SIDEBAR (NEVER SCROLLS) ================= */}
-      <aside
-        className={`fixed lg:sticky lg:top-0 inset-y-0 left-0 z-50 w-64 h-screen shrink-0 overflow-hidden bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-200 ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        }`}
-      >
-        <div>
-          {/* Brand Logo */}
-          <div className="h-16 px-6 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-600 to-emerald-600 flex items-center justify-center text-white shadow-sm">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="font-black text-lg tracking-tight text-slate-900 block leading-none">
-                  Libra<span className="text-teal-600">Flow</span>
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  LMS Portal
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={() => setMobileMenuOpen(false)}
-              className="lg:hidden p-1.5 text-slate-400 hover:text-slate-700"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Sidebar Navigation — Only Dashboard */}
-          <div className="p-4">
-            <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold bg-teal-50 text-teal-800 border border-teal-200/70 shadow-2xs">
-              <LayoutDashboard className="w-4 h-4 text-teal-600" />
-              <span>Dashboard</span>
-            </div>
-          </div>
-        </div>
-
-        {/* User Info & Logout */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50/50">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-teal-600 text-white font-bold text-sm flex items-center justify-center">
-              {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-slate-900 truncate">{currentUser?.name}</p>
-              <p className="text-[11px] text-teal-700 font-semibold truncate">{currentUser?.role || 'Admin'}</p>
-            </div>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/80 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Logout</span>
-          </button>
-        </div>
-      </aside>
-
-      {/* ================= MAIN CONTENT AREA (SCROLLABLE INDEPENDENTLY) ================= */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        
-        {/* Top Header */}
         <header className="h-16 shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <button
@@ -220,17 +148,18 @@ export const Dashboard = () => {
                 {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div className="hidden sm:block text-left">
-                <p className="text-xs font-bold text-slate-800 leading-none">{currentUser?.name}</p>
-                <p className="text-[10px] text-teal-700 font-semibold mt-0.5">{currentUser?.role || 'Admin'}</p>
+                <p className="text-xs font-bold text-slate-800 leading-none">
+                  {currentUser?.name}
+                </p>
+                <p className="text-[10px] text-teal-700 font-semibold mt-0.5">
+                  {currentUser?.role || 'Admin'}
+                </p>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Main Dashboard Body */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-8">
-          
-          {/* ================= 1. DASHBOARD SUMMARY METRIC CARDS (7 ITEMS) ================= */}
           <section>
             <div className="mb-4">
               <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
@@ -244,16 +173,20 @@ export const Dashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {statCards.map((item) => {
                 const IconComponent = item.icon;
-                return (
+                const cardEl = (
                   <div
                     key={item.title}
-                    className={`bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs transition ${item.accentBorder}`}
+                    className={`bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs transition ${
+                      item.accentBorder
+                    } ${item.link ? 'cursor-pointer hover:shadow-md' : ''}`}
                   >
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                         {item.title}
                       </span>
-                      <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${item.iconBg}`}>
+                      <div
+                        className={`w-10 h-10 rounded-xl border flex items-center justify-center ${item.iconBg}`}
+                      >
                         <IconComponent className="w-5 h-5" />
                       </div>
                     </div>
@@ -265,11 +198,19 @@ export const Dashboard = () => {
                     </p>
                   </div>
                 );
+
+                if (item.link) {
+                  return (
+                    <Link key={item.title} to={item.link}>
+                      {cardEl}
+                    </Link>
+                  );
+                }
+                return cardEl;
               })}
             </div>
           </section>
 
-          {/* ================= 2. QUICK ACTION CARDS ================= */}
           <section>
             <div className="mb-4">
               <h2 className="text-sm font-extrabold text-slate-900 tracking-tight">
@@ -283,29 +224,51 @@ export const Dashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {quickActions.map((action) => {
                 const ActionIcon = action.icon;
-                return (
+                const content = (
                   <div
                     key={action.title}
-                    className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-start gap-4"
+                    className={`bg-white p-5 rounded-2xl border border-slate-200/90 shadow-2xs flex items-start gap-4 transition ${
+                      action.clickable
+                        ? 'hover:border-teal-300 hover:shadow-md cursor-pointer group'
+                        : ''
+                    }`}
                   >
-                    <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${action.color}`}>
+                    <div
+                      className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${action.color}`}
+                    >
                       <ActionIcon className="w-5 h-5" />
                     </div>
-                    <div>
-                      <h3 className="text-sm font-extrabold text-slate-900">
-                        {action.title}
-                      </h3>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <h3 className="text-sm font-extrabold text-slate-900 group-hover:text-teal-700 transition">
+                          {action.title}
+                        </h3>
+                        {action.badge && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                            {action.badge}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                         {action.description}
                       </p>
                     </div>
                   </div>
                 );
+
+                if (action.link) {
+                  return (
+                    <Link key={action.title} to={action.link}>
+                      {content}
+                    </Link>
+                  );
+                }
+
+                return content;
               })}
             </div>
           </section>
 
-          {/* ================= 3. RECENT ACTIVITIES ================= */}
           <section>
             <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-2xs">
               <div className="flex items-center justify-between mb-5 pb-4 border-b border-slate-100">
@@ -329,7 +292,7 @@ export const Dashboard = () => {
                   </div>
                   <p className="text-sm font-bold text-slate-700">No recent activities yet</p>
                   <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                    Whenever books, members, categories, or issues are added or updated, those activities will automatically appear here in real time.
+                    Whenever books or categories are added, updated, or removed, those activities will automatically appear here in real time.
                   </p>
                 </div>
               ) : (
@@ -339,9 +302,12 @@ export const Dashboard = () => {
                       key={act.id}
                       className="py-3.5 flex items-center justify-between gap-4"
                     >
-                      <div>
-                        <p className="text-xs font-extrabold text-slate-900">{act.title}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{act.description}</p>
+                      <div className="flex items-start gap-3">
+                        <div className="w-2 h-2 rounded-full bg-teal-500 mt-1.5 shrink-0" />
+                        <div>
+                          <p className="text-xs font-extrabold text-slate-900">{act.title}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{act.description}</p>
+                        </div>
                       </div>
                       <div className="text-right shrink-0">
                         {act.badge && (
@@ -360,7 +326,6 @@ export const Dashboard = () => {
               )}
             </div>
           </section>
-
         </main>
       </div>
     </div>

@@ -10,6 +10,8 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { Dashboard } from './pages/Dashboard';
+import { BookList } from './pages/BookList';
+import { BookDetails } from './pages/BookDetails';
 
 function App() {
   return (
@@ -26,6 +28,22 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/books"
+              element={
+                <ProtectedRoute>
+                  <BookList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/books/:id"
+              element={
+                <ProtectedRoute>
+                  <BookDetails />
                 </ProtectedRoute>
               }
             />

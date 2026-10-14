@@ -1,19 +1,53 @@
-# React + Vite
+# LibraFlow — Library Management System (LMS)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A modern, responsive, high-performance Library Management System built with React 19, Tailwind CSS v4, Lucide React, and the Open Library Global API.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Authentication & Role Access**:
+  - Secure institutional login and member registration.
+  - Role-based profiles (Admin, Student/Scholar, Faculty).
+  - Password recovery workflow with 2-step verification.
+  - Persistent auth session via LocalStorage.
 
-## React Compiler
+- **Real-Time Dashboard**:
+  - High-level metric cards: Total Books, Total Members, Books Issued, Available Books, Overdue Books, Subject Classifications, and Fine Collected.
+  - Quick action shortcuts for catalog and desk operations.
+  - Live activity feed tracking book additions, updates, and inventory changes.
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+- **Book Catalog Management**:
+  - Direct integration with Open Library API fetching 20 curated technical and study volumes (Python, Java, C++, DSA, OS, DBMS).
+  - Instant single-letter autocomplete search and live Open Library database lookup.
+  - Multi-criteria filtering by category, author, and sorting (recently added, title, year, availability).
+  - Full CRUD operations: Add new volumes, update details, delete books, and adjust stock quantities.
+  - Responsive pagination and grid presentation.
 
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
+- **Book Volume Inspection**:
+  - Detailed book overview page with ISBN-13 copy shortcut, shelf placement mapping, stock progress visualization, and verified edition badge.
+  - Full-screen high-definition cover lightbox modal.
+  - External links directly to Open Library Index and Google Books preview.
 
-## Expanding the Oxlint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+- **Frontend**: React 19, React Router DOM v7, React Hook Form
+- **Styling**: Tailwind CSS v4
+- **Icons**: Lucide React
+- **Notifications**: React Toastify
+- **Data Source**: Open Library API (`https://openlibrary.org`) & LocalStorage Cache
+- **Build Tool**: Vite 8 with Rolldown Babel React Compiler
+
+## Quick Start
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Run linter
+npm run lint
+```

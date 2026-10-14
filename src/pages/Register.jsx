@@ -29,7 +29,7 @@ export const Register = () => {
   const {
     register,
     handleSubmit,
-    watch,
+    getValues,
     formState: { errors }
   } = useForm({
     defaultValues: {
@@ -40,8 +40,6 @@ export const Register = () => {
       role: 'Student'
     }
   });
-
-  const passwordVal = watch('password');
 
   const onSubmit = async (data) => {
     setIsSubmitting(true);
@@ -64,16 +62,11 @@ export const Register = () => {
 
   return (
     <div className="relative min-h-screen w-full flex flex-col lg:flex-row overflow-hidden bg-[#f8fafc] cyber-grid font-sans text-slate-800">
-      
-      {/* Dynamic Luminous Aura Elements */}
       <div className="absolute -top-24 -left-24 w-[600px] h-[600px] bg-teal-400/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute top-1/2 right-10 w-[500px] h-[500px] bg-amber-400/15 rounded-full blur-[150px] pointer-events-none" />
       <div className="absolute -bottom-20 left-1/3 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-[140px] pointer-events-none" />
 
-      {/* ================= 60% VISUAL HERO (MATCHING LOGIN EXACTLY) ================= */}
       <div className="relative w-full lg:w-[60%] min-h-[560px] lg:min-h-screen flex flex-col justify-between p-8 sm:p-12 lg:p-14 xl:p-16 text-white overflow-hidden z-10 clip-razor-edge">
-        
-        {/* Full-bleed high-res student membership registration theme image (Static, no motion) */}
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{ 
@@ -81,14 +74,11 @@ export const Register = () => {
           }}
         />
 
-        {/* Sophisticated dual overlay */}
         <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-teal-950/80 to-slate-950/70" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-teal-950/30" />
 
-        {/* Razor Edge Neon Light Line */}
         <div className="hidden lg:block absolute right-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-teal-400 via-amber-300 to-emerald-400 shadow-[0_0_15px_rgba(20,184,166,0.8)] pointer-events-none z-30" />
 
-        {/* Top Header / Branding with LibraFlow */}
         <div className="relative z-20 flex items-center justify-between">
           <div className="flex items-center gap-3.5">
             <div className="relative">
@@ -111,7 +101,6 @@ export const Register = () => {
           </div>
         </div>
 
-        {/* Middle Hero Showcase */}
         <div className="relative z-20 my-auto py-8 max-w-xl">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-teal-500/25 border-l-2 border-l-teal-400 text-teal-200 text-xs font-mono font-medium mb-5 backdrop-blur-md">
             <Cpu className="w-3.5 h-3.5 text-amber-300" />
@@ -126,7 +115,6 @@ export const Register = () => {
             Gain immediate borrower privileges, reserve physical books from reserve stacks, and sync your active reading queue directly in LocalStorage.
           </p>
 
-          {/* High-Tech HUD Badges */}
           <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="p-4 rounded-xl bg-slate-900/80 backdrop-blur-xl border border-teal-500/20">
               <div className="flex items-center justify-between mb-2">
@@ -157,17 +145,11 @@ export const Register = () => {
           </div>
         </div>
 
-        {/* Clean spacing container */}
         <div className="relative z-20 py-2"></div>
       </div>
 
-      {/* ================= 40% REGISTER DATA PANEL: HOLOGRAPHIC LUXE GLASS ================= */}
       <div className="relative w-full lg:w-[40%] min-h-screen flex items-center justify-center p-6 sm:p-10 lg:p-10 xl:p-14 z-20">
-        
-        {/* Floating Holographic Card */}
         <div className="w-full max-w-md relative z-10 holo-glass-card rounded-2xl p-7 sm:p-9 border border-slate-200/80">
-          
-          {/* Header Title */}
           <div className="mb-6 pb-4 border-b border-slate-200/70">
             <div className="flex items-center justify-between">
               <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-teal-50 border border-teal-200 text-teal-900 text-[11px] font-bold tracking-wider uppercase">
@@ -186,8 +168,6 @@ export const Register = () => {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-3.5" noValidate>
-            
-            {/* Full Name */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                 Full Name
@@ -215,7 +195,6 @@ export const Register = () => {
               )}
             </div>
 
-            {/* Email Field */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                 Institutional Email
@@ -246,7 +225,6 @@ export const Register = () => {
               )}
             </div>
 
-            {/* Role Privilege */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                 Membership Role Privilege
@@ -266,7 +244,6 @@ export const Register = () => {
               </div>
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                 Security Passkey
@@ -301,7 +278,6 @@ export const Register = () => {
               )}
             </div>
 
-            {/* Confirm Password */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                 Confirm Passkey
@@ -315,7 +291,7 @@ export const Register = () => {
                   placeholder="••••••••••••"
                   {...register('confirmPassword', {
                     required: 'Please confirm password',
-                    validate: (val) => val === passwordVal || 'Passwords do not match'
+                    validate: (val) => val === getValues('password') || 'Passwords do not match'
                   })}
                   className={`w-full pl-10 pr-11 py-2.5 bg-white border ${
                     errors.confirmPassword ? 'border-rose-400 focus:ring-rose-400' : 'border-slate-300 focus:border-teal-600'
@@ -336,7 +312,6 @@ export const Register = () => {
               )}
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isSubmitting}
@@ -356,7 +331,6 @@ export const Register = () => {
             </button>
           </form>
 
-          {/* Login Link */}
           <p className="mt-4 text-center text-xs text-slate-500 font-semibold">
             Already have an active membership?{' '}
             <Link to="/login" className="text-teal-800 hover:text-teal-950 font-black underline underline-offset-4">

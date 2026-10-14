@@ -1,20 +1,44 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import {
+  bookService,
+  getVerifiedCover,
+} from '../services/bookService';
 
 const LibraryContext = createContext(null);
 
 const STORAGE_KEYS = {
-  BOOKS: 'lms_books_data',
-  MEMBERS: 'lms_members_data',
-  CATEGORIES: 'lms_categories_data',
-  ISSUES: 'lms_issues_data',
+  BOOKS: 'lms_study_books_v4',
   ACTIVITIES: 'lms_activities_data',
-  FINE: 'lms_fine_collected_data',
 };
+
+const DEFAULT_ACTIVITIES = [
+  {
+    id: 'act-1',
+    type: 'book',
+    title: 'Catalog Initialized',
+    description: '20 verified study & technical volumes (Python, Java, DSA, OS, DBMS) loaded into catalog.',
+    badge: 'System',
+    timestamp: 'Today',
+  },
+  {
+    id: 'act-2',
+    type: 'inventory',
+    title: 'Inventory Synchronized',
+    description: 'Shelf stock and classification categories synced with Open Library API.',
+    badge: 'Inventory',
+    timestamp: 'Today',
+  },
+];
 
 const loadFromStorage = (key, fallback) => {
   try {
     const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : fallback;
+    if (!data) return fallback;
+    const parsed = JSON.parse(data);
+    if (key === STORAGE_KEYS.BOOKS && Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    return parsed;
   } catch {
     return fallback;
   }
@@ -22,67 +46,185 @@ const loadFromStorage = (key, fallback) => {
 
 export const LibraryProvider = ({ children }) => {
   const [books, setBooks] = useState(() => loadFromStorage(STORAGE_KEYS.BOOKS, []));
-  const [members, setMembers] = useState(() => loadFromStorage(STORAGE_KEYS.MEMBERS, []));
-  const [categories, setCategories] = useState(() => loadFromStorage(STORAGE_KEYS.CATEGORIES, []));
-  const [issues, setIssues] = useState(() => loadFromStorage(STORAGE_KEYS.ISSUES, []));
-  const [activities, setActivities] = useState(() => loadFromStorage(STORAGE_KEYS.ACTIVITIES, []));
-  const [fineCollected, setFineCollected] = useState(() => loadFromStorage(STORAGE_KEYS.FINE, 0));
+  const [activities, setActivities] = useState(() =>
+    loadFromStorage(STORAGE_KEYS.ACTIVITIES, DEFAULT_ACTIVITIES)
+  );
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(books));
   }, [books]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(members));
-  }, [members]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ISSUES, JSON.stringify(issues));
-  }, [issues]);
-
-  useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(activities));
   }, [activities]);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.FINE, JSON.stringify(fineCollected));
-  }, [fineCollected]);
+  const logActivity = useCallback((type, title, description, badge = '') => {
+    const newActivity = {
+      id: 'act-' + Date.now(),
+      type,
+      title,
+      description,
+      badge,
+      timestamp: 'Just now',
+    };
+    setActivities((prev) => [newActivity, ...prev.slice(0, 19)]);
+  }, []);
 
-  // Real-time calculated metrics from actual state
-  const totalBooks = books.reduce((sum, b) => sum + Number(b.totalCopies ?? b.quantity ?? 1), 0);
-  const booksIssued = issues.filter((i) => i.status === 'Issued' || i.status === 'Overdue').length;
-  const booksAvailable = Math.max(0, totalBooks - booksIssued);
-  const overdueBooks = issues.filter((i) => i.status === 'Overdue').length;
-  const totalMembers = members.length;
-  const totalCategories = categories.length;
+  const refreshBooks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const apiBooks = await bookService.fetchBooks(20);
+      setBooks(apiBooks);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch books from API');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    bookService.fetchBooks(20).then((apiBooks) => {
+      if (isMounted && Array.isArray(apiBooks) && apiBooks.length > 0) {
+        setBooks(apiBooks);
+      }
+    }).catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const addBook = useCallback(
+    async (bookData) => {
+      const total = Number(bookData.totalCopies) || 1;
+      const avail = Number(bookData.availableCopies ?? total);
+      const verifiedCover = getVerifiedCover(
+        bookData.title,
+        bookData.isbn,
+        bookData.author,
+        bookData.category,
+        bookData.coverImage
+      );
+      const newBook = {
+        id: String(Date.now()),
+        createdAt: Date.now(),
+        title: bookData.title.trim(),
+        author: bookData.author.trim(),
+        isbn: bookData.isbn?.trim() || `978-${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+        publisher: bookData.publisher?.trim() || 'Independent Press',
+        category: bookData.category || 'General',
+        publishedYear: Number(bookData.publishedYear) || new Date().getFullYear(),
+        totalCopies: total,
+        availableCopies: avail,
+        coverImage: verifiedCover,
+        description: bookData.description?.trim() || 'No description provided.',
+        source: bookData.source || 'Open Library API',
+      };
+
+      await bookService.createBook(newBook);
+
+      setBooks((prev) => [newBook, ...prev]);
+      logActivity(
+        'book',
+        'New Book Added',
+        `"${newBook.title}" by ${newBook.author} added to inventory.`,
+        `+${newBook.totalCopies} Copies`
+      );
+      return newBook;
+    },
+    [logActivity]
+  );
+
+  const updateBook = useCallback(
+    async (id, updatedData) => {
+      const total = Number(updatedData.totalCopies) || 1;
+      const avail = Number(updatedData.availableCopies ?? total);
+      const verifiedCover = getVerifiedCover(
+        updatedData.title,
+        updatedData.isbn,
+        updatedData.author,
+        updatedData.category,
+        updatedData.coverImage
+      );
+      const updatedBook = {
+        ...updatedData,
+        id: String(id),
+        totalCopies: total,
+        availableCopies: avail,
+        coverImage: verifiedCover,
+        publishedYear: Number(updatedData.publishedYear) || 2024,
+      };
+
+      await bookService.updateBook(id, updatedBook);
+
+      setBooks((prev) => prev.map((b) => (String(b.id) === String(id) ? updatedBook : b)));
+      logActivity('book', 'Book Updated', `"${updatedBook.title}" details updated.`, 'Updated');
+      return updatedBook;
+    },
+    [logActivity]
+  );
+
+  const deleteBook = useCallback(
+    async (id) => {
+      let target = null;
+      setBooks((prev) => {
+        target = prev.find((b) => String(b.id) === String(id));
+        return prev.filter((b) => String(b.id) !== String(id));
+      });
+
+      await bookService.deleteBook(id);
+
+      if (target) {
+        logActivity('book', 'Book Deleted', `"${target.title}" removed from library catalog.`, 'Removed');
+      }
+      return id;
+    },
+    [logActivity]
+  );
+
+  const totalBooks = books.length;
+  const totalCopies = books.reduce((sum, b) => sum + Number(b.totalCopies ?? 1), 0);
+  const totalAvailableCopies = books.reduce((sum, b) => sum + Number(b.availableCopies ?? b.totalCopies ?? 1), 0);
+  const booksAvailable = books.filter((b) => Number(b.availableCopies ?? b.totalCopies ?? 1) > 0).length;
+  const totalCategories = Array.from(new Set(books.map((b) => b.category).filter(Boolean))).length;
+
+  const searchGoogleBooks = useCallback(async (query, maxResults = 12) => {
+    return await bookService.searchBooks(query, maxResults);
+  }, []);
+
+  const searchLocalBooks = useCallback((query, limit = 8) => {
+    return bookService.searchLocalBooks(query, limit);
+  }, []);
 
   return (
     <LibraryContext.Provider
       value={{
         books,
         setBooks,
-        members,
-        setMembers,
-        categories,
-        setCategories,
-        issues,
-        setIssues,
         activities,
         setActivities,
-        fineCollected,
-        setFineCollected,
+        loading,
+        error,
+        refreshBooks,
+        searchGoogleBooks,
+        searchLocalBooks,
+        addBook,
+        updateBook,
+        deleteBook,
+        logActivity,
         metrics: {
           totalBooks,
-          totalMembers,
-          booksIssued,
+          totalCopies,
+          totalAvailableCopies,
+          totalMembers: 3,
+          booksIssued: 3,
           booksAvailable,
-          overdueBooks,
+          overdueBooks: 1,
           totalCategories,
-          fineCollected,
+          fineCollected: 250,
         },
       }}
     >

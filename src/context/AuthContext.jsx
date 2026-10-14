@@ -14,11 +14,10 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
   });
-  const [loading] = useState(false);
+  const loading = false;
 
   useEffect(() => {
     try {
-      // Seed default accounts if DB is empty
       const existingUsers = localStorage.getItem(USERS_STORAGE_KEY);
       if (!existingUsers) {
         const initialUsers = [
@@ -41,8 +40,7 @@ export const AuthProvider = ({ children }) => {
         ];
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(initialUsers));
       }
-    } catch (err) {
-      console.error('Error seeding localStorage:', err);
+    } catch {
     }
   }, []);
 

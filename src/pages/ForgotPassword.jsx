@@ -22,7 +22,7 @@ export const ForgotPassword = () => {
   const {
     register: form2,
     handleSubmit: handleStep2,
-    watch: watch2,
+    getValues: getValues2,
     formState: { errors: errors2 }
   } = useForm();
 
@@ -62,8 +62,6 @@ export const ForgotPassword = () => {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 via-teal-50/40 to-amber-50/50 flex items-center justify-center p-4 sm:p-6 font-sans">
       <div className="w-full max-w-md bg-white/90 backdrop-blur-xl border border-teal-100 rounded-[2.5rem] p-7 sm:p-9 shadow-2xl shadow-teal-950/5 text-slate-800">
-        
-        {/* Top Header */}
         <div className="flex items-center justify-between mb-6">
           <Link
             to="/login"
@@ -177,7 +175,7 @@ export const ForgotPassword = () => {
                   placeholder="Repeat new password"
                   {...form2('confirmNewPassword', {
                     required: 'Please confirm password',
-                    validate: (val) => val === watch2('newPassword') || 'Passwords do not match'
+                    validate: (val) => val === getValues2('newPassword') || 'Passwords do not match'
                   })}
                   className="w-full pl-10 pr-4 py-3 bg-slate-50/70 border border-slate-200 focus:border-teal-500 rounded-2xl text-slate-900 text-sm focus:outline-none focus:ring-4 focus:ring-teal-500/15 focus:bg-white transition"
                 />
