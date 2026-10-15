@@ -13,6 +13,7 @@ import { Dashboard } from './pages/Dashboard';
 import { BookList } from './pages/BookList';
 import { BookDetails } from './pages/BookDetails';
 import { MemberList } from './pages/MemberList';
+import { Circulation } from './pages/Circulation';
 
 function App() {
   return (
@@ -56,6 +57,15 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/circulation"
+              element={
+                <ProtectedRoute>
+                  <Circulation />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/issue-return" element={<Navigate to="/circulation" replace />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </BrowserRouter>

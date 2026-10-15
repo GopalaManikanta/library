@@ -51,6 +51,7 @@ export const Dashboard = () => {
       icon: BookMarked,
       iconBg: 'bg-sky-50 text-sky-600 border-sky-100',
       accentBorder: 'hover:border-sky-300',
+      link: '/circulation',
     },
     {
       title: 'Books Available',
@@ -68,6 +69,7 @@ export const Dashboard = () => {
       icon: AlertTriangle,
       iconBg: 'bg-rose-50 text-rose-600 border-rose-100',
       accentBorder: 'hover:border-rose-300',
+      link: '/circulation',
     },
     {
       title: 'Total Categories',
@@ -103,6 +105,8 @@ export const Dashboard = () => {
       icon: ArrowUpRight,
       color: 'bg-sky-50 text-sky-700 border-sky-200/80',
       badge: 'Circulation Desk',
+      link: '/circulation?action=issue',
+      clickable: true,
     },
     {
       title: 'Return Book',
@@ -110,10 +114,12 @@ export const Dashboard = () => {
       icon: ArrowDownLeft,
       color: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
       badge: 'Shelf Inventory',
+      link: '/circulation?tab=active',
+      clickable: true,
     },
     {
       title: 'Add Member',
-      description: 'Register student or faculty profiles into the system',
+      description: 'Register library member profiles into the system',
       icon: UserPlus,
       color: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
       badge: 'Directory',

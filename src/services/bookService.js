@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const OPEN_LIBRARY_API = 'https://openlibrary.org';
-export const DEFAULT_BOOK_COVER = 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=400';
+const BOOKS_STORAGE_KEY = 'lms_books_api_data_v6';
 
 const cleanCategory = (cat) => {
   if (!cat || typeof cat !== 'string') return 'Computer Science';
@@ -10,148 +10,141 @@ const cleanCategory = (cat) => {
   return cat.trim();
 };
 
-export const generateFallbackCover = () => DEFAULT_BOOK_COVER;
+const FALLBACK_COVERS = [
+  'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&q=80&w=600',
+  'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&q=80&w=600',
+  'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&q=80&w=600',
+  'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=600',
+  'https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&q=80&w=600',
+  'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&q=80&w=600',
+];
+
+export const generateFallbackCover = (title = '', _author = '', category = '') => {
+  const seed = (String(title || '') + String(category || '')).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  return FALLBACK_COVERS[seed % FALLBACK_COVERS.length];
+};
+
+export const DEFAULT_BOOK_COVER = FALLBACK_COVERS[0];
 
 export const getVerifiedCover = (title = '', isbn = '', author = '', category = '', existingCover = '') => {
-  const normTitle = (title || '').toLowerCase().trim();
-  const cleanIsbn = (isbn || '').replace(/\D/g, '');
-
-  if (existingCover && !existingCover.startsWith('data:') && !existingCover.includes('9780439708180')) {
+  if (existingCover && !existingCover.startsWith('data:')) {
     return existingCover;
   }
-
-  if (normTitle.includes('learning python')) return 'https://covers.openlibrary.org/b/id/1312568-L.jpg';
-  if (normTitle.includes('core python')) return 'https://covers.openlibrary.org/b/id/13192647-L.jpg';
-  if (normTitle.includes('fluent python')) return 'https://covers.openlibrary.org/b/id/8743408-L.jpg';
-  if (normTitle.includes('black hat python')) return 'https://covers.openlibrary.org/b/id/8513526-L.jpg';
-  if (normTitle.includes('python programming')) return 'https://covers.openlibrary.org/b/id/935554-L.jpg';
-  if (normTitle.includes('think python')) return 'https://covers.openlibrary.org/b/id/14817169-L.jpg';
-  if (normTitle.includes('python crash course') || normTitle.includes('python')) return 'https://covers.openlibrary.org/b/id/8800209-L.jpg';
-
-  if (normTitle.includes('programming with java')) return 'https://covers.openlibrary.org/b/id/10487733-L.jpg';
-  if (normTitle.includes('effective java')) return 'https://covers.openlibrary.org/b/id/8300262-L.jpg';
-  if (normTitle.includes('java: the complete') || (normTitle.includes('java') && !normTitle.includes('script'))) return 'https://covers.openlibrary.org/b/id/62098-L.jpg';
-
-  if (normTitle.includes('the c programming language') || normTitle === 'c programming') return 'https://covers.openlibrary.org/b/id/6684943-L.jpg';
-  if (normTitle.includes('the c++ programming') || normTitle.includes('object-oriented programming with c++') || normTitle.includes('c++ primer') || normTitle.includes('c++')) return 'https://covers.openlibrary.org/b/id/135999-L.jpg';
-  if (normTitle.includes('invitation to computer science')) return 'https://covers.openlibrary.org/b/id/8524066-L.jpg';
-  if (normTitle.includes('computer science')) return 'https://covers.openlibrary.org/b/id/2378050-L.jpg';
-  if (normTitle.includes('art of computer programming')) return 'https://covers.openlibrary.org/b/id/1487679-L.jpg';
-  if (normTitle.includes('algorithms to live by')) return 'https://covers.openlibrary.org/b/id/14601429-L.jpg';
-  if (normTitle.includes('data structures')) return 'https://covers.openlibrary.org/b/id/11067110-L.jpg';
-  if (normTitle.includes('cracking the coding interview')) return 'https://covers.openlibrary.org/b/id/7949575-L.jpg';
-  if (normTitle.includes('operating system')) return 'https://covers.openlibrary.org/b/id/302591-L.jpg';
-  if (normTitle.includes('database')) return 'https://covers.openlibrary.org/b/id/54871-L.jpg';
-  if (normTitle.includes('computer networking') || normTitle.includes('networking')) return 'https://covers.openlibrary.org/b/id/193126-L.jpg';
-  if (normTitle.includes('clean code')) return 'https://covers.openlibrary.org/b/id/8065615-L.jpg';
-  if (normTitle.includes('pragmatic programmer')) return 'https://covers.openlibrary.org/b/id/10143650-L.jpg';
-  if (normTitle.includes('eloquent javascript') || normTitle.includes('javascript')) return 'https://covers.openlibrary.org/b/id/7082166-L.jpg';
-  if (normTitle.includes('artificial intelligence')) return 'https://covers.openlibrary.org/b/id/92018-L.jpg';
-  if (normTitle.includes('deep learning')) return 'https://covers.openlibrary.org/b/id/8086288-L.jpg';
-  if (normTitle.includes('brief history of time') || (normTitle.includes('hawking') && normTitle.includes('time'))) return 'https://covers.openlibrary.org/b/id/10432365-L.jpg';
-
-  const isbnMap = {
-    '9780596516604': 'https://covers.openlibrary.org/b/id/1312568-L.jpg',
-    '9782225800689': 'https://covers.openlibrary.org/b/id/6684943-L.jpg',
-    '9780074635421': 'https://covers.openlibrary.org/b/id/10487733-L.jpg',
-    '9781593279288': 'https://covers.openlibrary.org/b/id/8800209-L.jpg',
-    '9781260440232': 'https://covers.openlibrary.org/b/id/62098-L.jpg',
-    '9780131103627': 'https://covers.openlibrary.org/b/id/6684943-L.jpg',
-    '9780321714114': 'https://covers.openlibrary.org/b/id/135999-L.jpg',
-    '9780672324536': 'https://covers.openlibrary.org/b/id/11067110-L.jpg',
-    '9780984782857': 'https://covers.openlibrary.org/b/id/7949575-L.jpg',
-    '9781119800361': 'https://covers.openlibrary.org/b/id/302591-L.jpg',
-    '9780078022159': 'https://covers.openlibrary.org/b/id/54871-L.jpg',
-    '9780136681557': 'https://covers.openlibrary.org/b/id/193126-L.jpg',
-    '9780132350884': 'https://covers.openlibrary.org/b/id/8065615-L.jpg',
-    '9780135957059': 'https://covers.openlibrary.org/b/id/10143650-L.jpg',
-    '9781593279509': 'https://covers.openlibrary.org/b/id/7082166-L.jpg',
-    '9780134610993': 'https://covers.openlibrary.org/b/id/92018-L.jpg',
-    '9780262035613': 'https://covers.openlibrary.org/b/id/8086288-L.jpg',
-    '9780553380163': 'https://covers.openlibrary.org/b/id/10432365-L.jpg',
-  };
-
-  if (cleanIsbn && isbnMap[cleanIsbn]) {
-    return isbnMap[cleanIsbn];
+  const cleanIsbn = (isbn || '').replace(/\D/g, '');
+  if (cleanIsbn && cleanIsbn.length >= 10) {
+    return `https://covers.openlibrary.org/b/isbn/${cleanIsbn}-L.jpg`;
   }
-
-  return DEFAULT_BOOK_COVER;
+  return generateFallbackCover(title, author, category);
 };
 
 export const bookService = {
-  async fetchBooks(limit = 20) {
+  async fetchBooks(limit = 40) {
     try {
       const response = await axios.get(
-        `${OPEN_LIBRARY_API}/search.json?q=python+OR+java+OR+c%2B%2B+OR+computer+science+OR+programming&limit=${limit}&fields=key,title,author_name,first_publish_year,cover_i,isbn,publisher,subject`,
-        { timeout: 8000 }
+        `${OPEN_LIBRARY_API}/search.json?q=computer+science+OR+programming+OR+algorithms+OR+database+OR+software+engineering&limit=${Math.max(limit, 40)}&fields=key,title,author_name,first_publish_year,cover_i,isbn,publisher,subject`,
+        {
+          headers: { 'User-Agent': 'LibraryManagementApp/1.0 (contact@libraryapp.org)' },
+          timeout: 10000,
+        }
       );
 
       if (response.data?.docs && Array.isArray(response.data.docs) && response.data.docs.length > 0) {
-        const liveBooks = response.data.docs.slice(0, limit).map((doc, idx) => {
-          const rawIsbn = doc.isbn ? doc.isbn[0] : `978-${Math.floor(1000000000 + Math.random() * 9000000000)}`;
-          const author = doc.author_name ? doc.author_name.join(', ') : 'Various Authors';
-          const publisher = doc.publisher ? doc.publisher[0] : 'Academic Computer Press';
-          const category = cleanCategory(doc.subject ? doc.subject[0] : 'Computer Science');
-          const cover = doc.cover_i
-            ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`
-            : getVerifiedCover(doc.title, rawIsbn, author, category);
+        const liveBooks = response.data.docs
+          .filter((doc) => doc.title)
+          .map((doc, idx) => {
+            const rawIsbn = doc.isbn ? doc.isbn[0] : `978-${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+            const author = doc.author_name ? doc.author_name.join(', ') : 'Academic Author';
+            const publisher = doc.publisher ? doc.publisher[0] : 'Academic Press';
+            const category = cleanCategory(doc.subject ? doc.subject[0] : 'Computer Science');
+            const cover = doc.cover_i
+              ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`
+              : getVerifiedCover(doc.title, rawIsbn, author, category);
 
-          return {
-            id: String(doc.cover_edition_key || doc.key?.replace('/works/', '') || idx + 1),
-            title: doc.title,
-            author,
-            isbn: rawIsbn,
-            publisher,
-            category,
-            publishedYear: doc.first_publish_year || 2020,
-            totalCopies: 12 + (idx % 6),
-            availableCopies: 8 + (idx % 4),
-            coverImage: cover,
-            description: `${doc.title} by ${author}. A widely studied technical and computer science reference catalogued in the Open Library global database.`,
-            source: 'Open Library API',
-          };
-        });
+            return {
+              id: String(doc.cover_edition_key || doc.key?.replace('/works/', '') || `ol-${idx + 1}`),
+              title: doc.title,
+              author,
+              isbn: rawIsbn,
+              publisher,
+              category,
+              publishedYear: doc.first_publish_year || 2021,
+              totalCopies: 10 + (idx % 8),
+              availableCopies: 8 + (idx % 5),
+              coverImage: cover,
+              description: `${doc.title} by ${author}. Catalogued from Open Library global database API.`,
+              source: 'Open Library API',
+            };
+          });
 
-        localStorage.setItem('lms_study_books_v4', JSON.stringify(liveBooks));
+        localStorage.setItem(BOOKS_STORAGE_KEY, JSON.stringify(liveBooks));
         return liveBooks;
       }
 
-      const cached = localStorage.getItem('lms_study_books_v4');
+      const cached = localStorage.getItem(BOOKS_STORAGE_KEY);
       if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
-          }
-        } catch {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
       }
       return [];
     } catch {
-      const cached = localStorage.getItem('lms_study_books_v4');
+      const cached = localStorage.getItem(BOOKS_STORAGE_KEY);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
           if (Array.isArray(parsed) && parsed.length > 0) {
             return parsed;
           }
-        } catch {
-        }
+        } catch {}
       }
       return [];
     }
   },
 
   async createBook(newBook) {
-    return newBook;
+    try {
+      const res = await axios.post(
+        'https://jsonplaceholder.typicode.com/posts',
+        {
+          title: newBook.title,
+          body: newBook.description,
+          userId: 1,
+        },
+        { timeout: 7000 }
+      );
+      return {
+        ...newBook,
+        apiId: res.data?.id,
+      };
+    } catch {
+      return newBook;
+    }
   },
 
   async updateBook(id, updatedBook) {
-    return updatedBook;
+    try {
+      await axios.put(
+        'https://jsonplaceholder.typicode.com/posts/1',
+        {
+          title: updatedBook.title,
+          body: updatedBook.description,
+        },
+        { timeout: 7000 }
+      );
+      return updatedBook;
+    } catch {
+      return updatedBook;
+    }
   },
 
   async deleteBook(id) {
-    return id;
+    try {
+      await axios.delete('https://jsonplaceholder.typicode.com/posts/1', { timeout: 7000 });
+      return id;
+    } catch {
+      return id;
+    }
   },
 
   searchLocalBooks(query, limit = 8) {
@@ -159,15 +152,14 @@ export const bookService = {
     const clean = query.trim().toLowerCase();
 
     let books = [];
-    const cached = localStorage.getItem('lms_study_books_v4');
+    const cached = localStorage.getItem(BOOKS_STORAGE_KEY);
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           books = parsed;
         }
-      } catch {
-      }
+      } catch {}
     }
 
     const wordStart = (str) =>
@@ -217,7 +209,7 @@ export const bookService = {
     try {
       const res = await axios.get(
         `${OPEN_LIBRARY_API}/search.json?q=${encodeURIComponent(cleanQuery)}&limit=${limit}&fields=key,title,author_name,first_publish_year,cover_i,isbn,publisher,subject`,
-        { timeout: 6000 }
+        { timeout: 7000 }
       );
 
       let externalResults = [];

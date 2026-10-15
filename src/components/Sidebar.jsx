@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   BookCopy,
   Users,
+  ArrowLeftRight,
   LogOut,
   X
 } from 'lucide-react';
@@ -102,6 +103,21 @@ export const Sidebar = ({ mobileMenuOpen, setMobileMenuOpen }) => {
             >
               <Users className="w-4 h-4 text-sky-600" />
               <span>Member Management</span>
+            </NavLink>
+
+            <NavLink
+              to="/circulation"
+              onClick={() => setMobileMenuOpen(false)}
+              className={({ isActive }) =>
+                `w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  isActive
+                    ? 'bg-teal-50 text-teal-800 border border-teal-200/70 shadow-2xs'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                }`
+              }
+            >
+              <ArrowLeftRight className="w-4 h-4 text-amber-600" />
+              <span>Issue & Return</span>
             </NavLink>
           </div>
         </div>
