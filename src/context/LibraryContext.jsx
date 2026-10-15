@@ -3,11 +3,13 @@ import {
   bookService,
   getVerifiedCover,
 } from '../services/bookService';
+import { memberService, MEMBER_AVATARS } from '../services/memberService';
 
 const LibraryContext = createContext(null);
 
 const STORAGE_KEYS = {
   BOOKS: 'lms_study_books_v4',
+  MEMBERS: 'lms_members_dummyjson_data_v1',
   ACTIVITIES: 'lms_activities_data',
 };
 
@@ -38,6 +40,26 @@ const loadFromStorage = (key, fallback) => {
     if (key === STORAGE_KEYS.BOOKS && Array.isArray(parsed) && parsed.length > 0) {
       return parsed;
     }
+    if (key === STORAGE_KEYS.MEMBERS && Array.isArray(parsed) && parsed.length >= 10) {
+      return parsed.map((m, idx) => ({
+        ...m,
+        id: String(m.id || `mem-${idx + 1}`),
+        membershipId: m.membershipId || `LIB-MEM-${1000 + idx + 1}`,
+        fullName: m.fullName || m.name || `Library Member ${idx + 1}`,
+        name: m.fullName || m.name || `Library Member ${idx + 1}`,
+        email: (m.email || `member${idx + 1}@library.com`).toLowerCase(),
+        mobileNumber: m.mobileNumber || m.phone || '9876543210',
+        phone: m.mobileNumber || m.phone || '9876543210',
+        address: typeof m.address === 'object' && m.address !== null ? `${m.address.suite || ''} ${m.address.street || ''}, ${m.address.city || ''} - ${m.address.zipcode || ''}`.trim() : (m.address || 'Central Library Campus'),
+        membershipDate: m.membershipDate || m.joinedDate || '2024-01-15',
+        role: m.role || 'Student',
+        status: m.status || 'Active',
+        avatar: m.avatar || m.image || MEMBER_AVATARS[idx % MEMBER_AVATARS.length],
+        image: m.avatar || m.image || MEMBER_AVATARS[idx % MEMBER_AVATARS.length],
+        booksIssuedCount: Number(m.booksIssuedCount) || 0,
+        source: m.source || 'DummyJSON API',
+      }));
+    }
     return parsed;
   } catch {
     return fallback;
@@ -46,6 +68,7 @@ const loadFromStorage = (key, fallback) => {
 
 export const LibraryProvider = ({ children }) => {
   const [books, setBooks] = useState(() => loadFromStorage(STORAGE_KEYS.BOOKS, []));
+  const [members, setMembers] = useState(() => loadFromStorage(STORAGE_KEYS.MEMBERS, []));
   const [activities, setActivities] = useState(() =>
     loadFromStorage(STORAGE_KEYS.ACTIVITIES, DEFAULT_ACTIVITIES)
   );
@@ -55,6 +78,10 @@ export const LibraryProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(books));
   }, [books]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.MEMBERS, JSON.stringify(members));
+  }, [members]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.ACTIVITIES, JSON.stringify(activities));
@@ -85,11 +112,54 @@ export const LibraryProvider = ({ children }) => {
     }
   }, []);
 
+  const refreshMembers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const apiMembers = await memberService.fetchMembers();
+      setMembers(apiMembers);
+    } catch (err) {
+      setError(err.message || 'Failed to fetch members from API');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     bookService.fetchBooks(20).then((apiBooks) => {
       if (isMounted && Array.isArray(apiBooks) && apiBooks.length > 0) {
         setBooks(apiBooks);
+      }
+    }).catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    memberService.fetchMembers().then((apiMembers) => {
+      if (isMounted && Array.isArray(apiMembers) && apiMembers.length > 0) {
+        setMembers((prev) => {
+          if (!prev || prev.length < 10 || prev.some((p) => !p.fullName || !p.fullName.trim() || !p.name || !p.avatar || p.source !== 'DummyJSON API')) {
+            return apiMembers;
+          }
+          return prev.map((m, idx) => {
+            const resolved = (m.fullName && m.fullName.trim()) || (m.name && m.name.trim()) || 'Library Member';
+            const phone = m.mobileNumber || m.phone || '9876543210';
+            const avatarUrl = m.avatar || m.image || MEMBER_AVATARS[idx % MEMBER_AVATARS.length];
+            return {
+              ...m,
+              fullName: resolved,
+              name: resolved,
+              mobileNumber: phone,
+              phone: phone,
+              avatar: avatarUrl,
+              image: avatarUrl,
+            };
+          });
+        });
       }
     }).catch(() => {});
     return () => {
@@ -185,6 +255,104 @@ export const LibraryProvider = ({ children }) => {
     [logActivity]
   );
 
+  const addMember = useCallback(
+    async (memberData) => {
+      const resolvedName = (memberData.fullName && memberData.fullName.trim()) || (memberData.name && memberData.name.trim()) || 'Library Member';
+      const cleanPhone = (memberData.mobileNumber && memberData.mobileNumber.trim()) || (memberData.phone && memberData.phone.trim()) || '9876543210';
+      const cleanAddr = typeof memberData.address === 'object' && memberData.address !== null
+        ? `${memberData.address.suite || ''} ${memberData.address.street || ''}, ${memberData.address.city || ''} - ${memberData.address.zipcode || ''}`.trim()
+        : (memberData.address?.trim() || 'Central Library Campus');
+      const avatarUrl = memberData.avatar || memberData.image || MEMBER_AVATARS[Math.floor(Math.random() * MEMBER_AVATARS.length)];
+      const newMember = {
+        id: 'mem-' + Date.now(),
+        membershipId: memberData.membershipId?.trim() || `LIB-MEM-${Math.floor(1000 + Math.random() * 9000)}`,
+        fullName: resolvedName,
+        name: resolvedName,
+        email: (memberData.email?.trim() || 'member@library.com').toLowerCase(),
+        mobileNumber: cleanPhone,
+        phone: cleanPhone,
+        address: cleanAddr,
+        membershipDate: memberData.membershipDate || new Date().toISOString().split('T')[0],
+        role: memberData.role || 'Student',
+        status: memberData.status || 'Active',
+        avatar: avatarUrl,
+        image: avatarUrl,
+        booksIssuedCount: Number(memberData.booksIssuedCount) || 0,
+        source: 'DummyJSON API',
+      };
+
+      await memberService.createMember(newMember);
+
+      setMembers((prev) => [newMember, ...prev]);
+      logActivity(
+        'member',
+        'New Member Enrolled',
+        `"${newMember.fullName}" enrolled with ID ${newMember.membershipId}.`,
+        'Enrolled'
+      );
+      return newMember;
+    },
+    [logActivity]
+  );
+
+  const updateMember = useCallback(
+    async (id, updatedData) => {
+      const resolvedName = (updatedData.fullName && updatedData.fullName.trim()) || (updatedData.name && updatedData.name.trim()) || 'Library Member';
+      const cleanPhone = (updatedData.mobileNumber && updatedData.mobileNumber.trim()) || (updatedData.phone && updatedData.phone.trim()) || '9876543210';
+      const cleanAddr = typeof updatedData.address === 'object' && updatedData.address !== null
+        ? `${updatedData.address.suite || ''} ${updatedData.address.street || ''}, ${updatedData.address.city || ''} - ${updatedData.address.zipcode || ''}`.trim()
+        : (updatedData.address?.trim() || 'Central Library Campus');
+      const avatarUrl = updatedData.avatar || updatedData.image || MEMBER_AVATARS[0];
+      const updatedMember = {
+        ...updatedData,
+        id: String(id),
+        membershipId: updatedData.membershipId?.trim(),
+        fullName: resolvedName,
+        name: resolvedName,
+        email: (updatedData.email?.trim() || 'member@library.com').toLowerCase(),
+        mobileNumber: cleanPhone,
+        phone: cleanPhone,
+        address: cleanAddr,
+        membershipDate: updatedData.membershipDate,
+        role: updatedData.role || 'Student',
+        status: updatedData.status || 'Active',
+        avatar: avatarUrl,
+        image: avatarUrl,
+        booksIssuedCount: Number(updatedData.booksIssuedCount) || 0,
+      };
+
+      await memberService.updateMember(id, updatedMember);
+
+      setMembers((prev) => prev.map((m) => (String(m.id) === String(id) ? updatedMember : m)));
+      logActivity(
+        'member',
+        'Member Profile Updated',
+        `Profile for "${updatedMember.fullName}" (${updatedMember.membershipId}) updated.`,
+        'Updated'
+      );
+      return updatedMember;
+    },
+    [logActivity]
+  );
+
+  const deleteMember = useCallback(
+    async (id) => {
+      let target = null;
+      setMembers((prev) => {
+        target = prev.find((m) => String(m.id) === String(id));
+        return prev.filter((m) => String(m.id) !== String(id));
+      });
+
+      await memberService.deleteMember(id);
+
+      if (target) {
+        logActivity('member', 'Member Removed', `"${target.fullName}" removed from members registry.`, 'Removed');
+      }
+      return id;
+    },
+    [logActivity]
+  );
+
   const totalBooks = books.length;
   const totalCopies = books.reduce((sum, b) => sum + Number(b.totalCopies ?? 1), 0);
   const totalAvailableCopies = books.reduce((sum, b) => sum + Number(b.availableCopies ?? b.totalCopies ?? 1), 0);
@@ -204,22 +372,28 @@ export const LibraryProvider = ({ children }) => {
       value={{
         books,
         setBooks,
+        members,
+        setMembers,
         activities,
         setActivities,
         loading,
         error,
         refreshBooks,
+        refreshMembers,
         searchGoogleBooks,
         searchLocalBooks,
         addBook,
         updateBook,
         deleteBook,
+        addMember,
+        updateMember,
+        deleteMember,
         logActivity,
         metrics: {
           totalBooks,
           totalCopies,
           totalAvailableCopies,
-          totalMembers: 3,
+          totalMembers: members.length,
           booksIssued: 3,
           booksAvailable,
           overdueBooks: 1,

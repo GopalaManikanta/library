@@ -25,7 +25,12 @@ A modern, responsive, high-performance Library Management System built with Reac
 - **Book Volume Inspection**:
   - Detailed book overview page with ISBN-13 copy shortcut, shelf placement mapping, stock progress visualization, and verified edition badge.
   - Full-screen high-definition cover lightbox modal.
-  - External links directly to Open Library Index and Google Books preview.
+- **Member Management**:
+  - Direct integration with DummyJSON API providing 10 patron profiles with matched photos and names.
+  - Complete CRUD operations: Add new patron, edit details, and remove records.
+  - Real-time search across names, emails, mobile numbers, membership IDs, and addresses.
+  - Role and status filtering with responsive pagination.
+  - Official Member Profile Pass view with copyable ID and printable pass.
 
 ## Tech Stack
 

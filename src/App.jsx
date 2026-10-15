@@ -12,6 +12,7 @@ import { ForgotPassword } from './pages/ForgotPassword';
 import { Dashboard } from './pages/Dashboard';
 import { BookList } from './pages/BookList';
 import { BookDetails } from './pages/BookDetails';
+import { MemberList } from './pages/MemberList';
 
 function App() {
   return (
@@ -44,6 +45,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <BookDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/members"
+              element={
+                <ProtectedRoute>
+                  <MemberList />
                 </ProtectedRoute>
               }
             />

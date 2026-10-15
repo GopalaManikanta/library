@@ -42,6 +42,7 @@ export const Dashboard = () => {
       icon: Users,
       iconBg: 'bg-indigo-50 text-indigo-600 border-indigo-100',
       accentBorder: 'hover:border-indigo-300',
+      link: '/members',
     },
     {
       title: 'Books Issued',
@@ -116,6 +117,8 @@ export const Dashboard = () => {
       icon: UserPlus,
       color: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
       badge: 'Directory',
+      link: '/members',
+      clickable: true,
     },
   ];
 
