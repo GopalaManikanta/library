@@ -83,10 +83,11 @@ export const Dashboard = () => {
     {
       title: 'Fine Collected',
       value: `₹${Number(metrics.fineCollected).toLocaleString('en-IN')}`,
-      subtitle: 'Overdue fines collected',
+      subtitle: `Collected (₹${Number(metrics.finePending || 0).toLocaleString('en-IN')} pending)`,
       icon: IndianRupee,
       iconBg: 'bg-amber-50 text-amber-600 border-amber-100',
       accentBorder: 'hover:border-amber-300',
+      link: '/circulation?tab=fines',
     },
   ];
 

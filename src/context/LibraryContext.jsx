@@ -165,6 +165,34 @@ const LibraryContextComposer = ({ children }) => {
     [circulationCtx, logActivity]
   );
 
+  const payFine = useCallback(
+    async (transactionId, paymentData) => {
+      const result = await circulationCtx.payFine(transactionId, paymentData);
+      logActivity(
+        'circulation',
+        'Fine Collected',
+        `₹${result.fineAmount} fine collected from ${result.memberName} via ${result.paymentMethod || 'Cash'} (Receipt: ${result.fineReceiptNo}).`,
+        `₹${result.fineAmount} Paid`
+      );
+      return result;
+    },
+    [circulationCtx, logActivity]
+  );
+
+  const waiveFine = useCallback(
+    async (transactionId, reason) => {
+      const result = await circulationCtx.waiveFine(transactionId, reason);
+      logActivity(
+        'circulation',
+        'Fine Waived',
+        `Fine waived for ${result.memberName} on "${result.bookTitle}".`,
+        'Waived'
+      );
+      return result;
+    },
+    [circulationCtx, logActivity]
+  );
+
   const metrics = useMemo(() => {
     const totalBooks = bookCtx.books.length;
     const totalCopies = bookCtx.books.reduce((sum, b) => sum + Number(b.totalCopies ?? 1), 0);
@@ -182,8 +210,14 @@ const LibraryContextComposer = ({ children }) => {
     const activeTransactions = circulationCtx.transactions.filter((t) => t.status === 'Active');
     const booksIssued = activeTransactions.length;
     const overdueBooks = activeTransactions.filter((t) => t.dueDate < currentDateStr).length;
-    const fineCollected =
-      circulationCtx.transactions.reduce((acc, t) => acc + (Number(t.fineAmount) || 0), 0);
+
+    const fineCollected = circulationCtx.transactions
+      .filter((t) => t.fineStatus === 'Paid')
+      .reduce((acc, t) => acc + (Number(t.fineAmount) || 0), 0);
+
+    const finePending = circulationCtx.transactions
+      .filter((t) => t.fineStatus === 'Unpaid')
+      .reduce((acc, t) => acc + (Number(t.fineAmount) || 0), 0);
 
     return {
       totalBooks,
@@ -195,6 +229,8 @@ const LibraryContextComposer = ({ children }) => {
       overdueBooks,
       totalCategories,
       fineCollected,
+      finePending,
+      totalFines: fineCollected + finePending,
     };
   }, [bookCtx.books, memberCtx.members.length, circulationCtx.transactions, currentDateStr]);
 
@@ -221,6 +257,10 @@ const LibraryContextComposer = ({ children }) => {
       issueBook,
       returnBook,
       renewBook,
+      payFine,
+      waiveFine,
+      getTransactionFineInfo: circulationCtx.getTransactionFineInfo,
+      dailyFineRate: circulationCtx.DAILY_FINE_RATE,
       activities,
       setActivities,
       logActivity,
@@ -247,9 +287,13 @@ const LibraryContextComposer = ({ children }) => {
       deleteMember,
       circulationCtx.transactions,
       circulationCtx.setTransactions,
+      circulationCtx.getTransactionFineInfo,
+      circulationCtx.DAILY_FINE_RATE,
       issueBook,
       returnBook,
       renewBook,
+      payFine,
+      waiveFine,
       activities,
       logActivity,
       metrics,

@@ -15,12 +15,6 @@ const syncBookCovers = (booksList) => {
 
 const loadBooksFromStorage = () => {
   try {
-    localStorage.removeItem('lms_study_books_v5');
-    localStorage.removeItem('lms_study_books_v4');
-    localStorage.removeItem('lms_study_books_v3');
-    localStorage.removeItem('lms_study_books_v2');
-    localStorage.removeItem('lms_study_books_v1');
-
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) return [];
     const parsed = JSON.parse(data);

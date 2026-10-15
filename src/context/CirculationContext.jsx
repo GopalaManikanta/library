@@ -5,7 +5,62 @@ import { getVerifiedCover } from '../services/bookService';
 
 const CirculationContext = createContext(null);
 
-const STORAGE_KEY = 'lms_transactions_data_v4';
+export const DAILY_FINE_RATE = 10;
+
+export const getTransactionFineInfo = (txn, todayStr = new Date().toISOString().split('T')[0]) => {
+  if (!txn) {
+    return {
+      fineAmount: 0,
+      daysOverdue: 0,
+      isOverdue: false,
+      fineStatus: 'None',
+      dailyRate: DAILY_FINE_RATE,
+    };
+  }
+
+  const dueDate = txn.dueDate;
+  if (!dueDate) {
+    return {
+      fineAmount: Number(txn.fineAmount) || 0,
+      daysOverdue: 0,
+      isOverdue: false,
+      fineStatus: txn.fineStatus || (Number(txn.fineAmount) > 0 ? 'Unpaid' : 'None'),
+      dailyRate: DAILY_FINE_RATE,
+    };
+  }
+
+  const effectiveEndDate = txn.status === 'Returned' && txn.returnDate ? txn.returnDate : todayStr;
+  const isOverdue = effectiveEndDate > dueDate;
+
+  let daysOverdue = 0;
+  let calculatedFine = 0;
+
+  if (isOverdue) {
+    const diffTime = new Date(effectiveEndDate).getTime() - new Date(dueDate).getTime();
+    daysOverdue = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    calculatedFine = daysOverdue * DAILY_FINE_RATE;
+  }
+
+  const fineAmount = Math.max(calculatedFine, Number(txn.fineAmount) || 0);
+  let fineStatus = txn.fineStatus;
+  if (!fineStatus) {
+    if (fineAmount > 0) {
+      fineStatus = txn.status === 'Returned' ? 'Paid' : 'Unpaid';
+    } else {
+      fineStatus = 'None';
+    }
+  }
+
+  return {
+    fineAmount,
+    daysOverdue,
+    isOverdue,
+    fineStatus,
+    dailyRate: DAILY_FINE_RATE,
+  };
+};
+
+const STORAGE_KEY = 'lms_transactions_data_v5';
 
 const INITIAL_TRANSACTIONS = [
   {
@@ -26,6 +81,10 @@ const INITIAL_TRANSACTIONS = [
     returnDate: null,
     status: 'Active',
     fineAmount: 0,
+    fineStatus: 'None',
+    finePaidDate: null,
+    paymentMethod: null,
+    fineReceiptNo: null,
     notes: 'Semester academic curriculum reference',
   },
   {
@@ -46,6 +105,10 @@ const INITIAL_TRANSACTIONS = [
     returnDate: null,
     status: 'Active',
     fineAmount: 0,
+    fineStatus: 'None',
+    finePaidDate: null,
+    paymentMethod: null,
+    fineReceiptNo: null,
     notes: 'Course study guide volume',
   },
   {
@@ -66,7 +129,11 @@ const INITIAL_TRANSACTIONS = [
     returnDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     status: 'Returned',
     fineAmount: 10,
-    notes: 'Returned at campus counter (fine cleared)',
+    fineStatus: 'Paid',
+    finePaidDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    paymentMethod: 'UPI',
+    fineReceiptNo: 'REC-5401',
+    notes: 'Returned at campus desk (fine cleared via UPI)',
   },
   {
     id: 'txn-104',
@@ -86,7 +153,11 @@ const INITIAL_TRANSACTIONS = [
     returnDate: null,
     status: 'Active',
     fineAmount: 50,
-    notes: 'Late return reminder dispatched',
+    fineStatus: 'Unpaid',
+    finePaidDate: null,
+    paymentMethod: null,
+    fineReceiptNo: null,
+    notes: 'Overdue loan notice dispatched (5 days late)',
   },
   {
     id: 'txn-105',
@@ -106,7 +177,59 @@ const INITIAL_TRANSACTIONS = [
     returnDate: null,
     status: 'Active',
     fineAmount: 0,
+    fineStatus: 'None',
+    finePaidDate: null,
+    paymentMethod: null,
+    fineReceiptNo: null,
     notes: 'Programming paradigms laboratory reference',
+  },
+  {
+    id: 'txn-106',
+    transactionId: 'TXN-1006',
+    memberId: 'mem-1',
+    memberName: 'Emily Johnson',
+    memberEmail: 'emily.johnson@x.dummyjson.com',
+    memberAvatar: 'https://dummyjson.com/icon/emilys/128',
+    bookId: '6',
+    bookTitle: 'The Art of Computer Programming',
+    bookAuthor: 'Donald Knuth',
+    bookIsbn: '9780201853926',
+    bookCover: 'https://covers.openlibrary.org/b/id/136600-L.jpg',
+    bookCategory: 'Algorithms',
+    issueDate: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    dueDate: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    returnDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    status: 'Returned',
+    fineAmount: 40,
+    fineStatus: 'Paid',
+    finePaidDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    paymentMethod: 'Cash',
+    fineReceiptNo: 'REC-4820',
+    notes: 'Returned at desk and late fine paid in cash',
+  },
+  {
+    id: 'txn-107',
+    transactionId: 'TXN-1007',
+    memberId: 'mem-2',
+    memberName: 'Michael Williams',
+    memberEmail: 'michael.williams@x.dummyjson.com',
+    memberAvatar: 'https://dummyjson.com/icon/michaelw/128',
+    bookId: '7',
+    bookTitle: 'Introduction to Algorithms (CLRS)',
+    bookAuthor: 'Thomas H. Cormen',
+    bookIsbn: '9780262033848',
+    bookCover: 'https://covers.openlibrary.org/b/id/2341462-L.jpg',
+    bookCategory: 'Algorithms',
+    issueDate: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    dueDate: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    returnDate: null,
+    status: 'Active',
+    fineAmount: 80,
+    fineStatus: 'Unpaid',
+    finePaidDate: null,
+    paymentMethod: null,
+    fineReceiptNo: null,
+    notes: 'Urgent reminder dispatched for overdue monograph',
   },
 ];
 
@@ -120,6 +243,7 @@ const syncTxnCovers = (list) => {
 
 const loadTransactionsFromStorage = () => {
   try {
+    localStorage.removeItem('lms_transactions_data_v4');
     localStorage.removeItem('lms_transactions_data_v3');
     localStorage.removeItem('lms_transactions_data_v2');
     localStorage.removeItem('lms_transactions_data_v1');
@@ -214,6 +338,10 @@ export const CirculationProvider = ({ children }) => {
         returnDate: null,
         status: 'Active',
         fineAmount: 0,
+        fineStatus: 'None',
+        finePaidDate: null,
+        paymentMethod: null,
+        fineReceiptNo: null,
         notes: notes || 'Standard circulation loan',
       };
 
@@ -257,7 +385,7 @@ export const CirculationProvider = ({ children }) => {
   );
 
   const returnBook = useCallback(
-    async (transactionId, returnDate) => {
+    async (transactionId, returnDate, collectFine = false, paymentMethod = 'Cash') => {
       const txn = transactions.find((t) => String(t.id) === String(transactionId));
       if (!txn) {
         throw new Error('Transaction record not found');
@@ -272,14 +400,19 @@ export const CirculationProvider = ({ children }) => {
       if (isOverdue) {
         const diffTime = Math.abs(new Date(finalReturnDate) - new Date(txn.dueDate));
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        fine = diffDays * 10;
+        fine = diffDays * DAILY_FINE_RATE;
       }
 
+      const receiptNo = fine > 0 && collectFine ? `REC-${Math.floor(1000 + Math.random() * 9000)}` : txn.fineReceiptNo;
       const updatedTxn = {
         ...txn,
         status: 'Returned',
         returnDate: finalReturnDate,
         fineAmount: fine,
+        fineStatus: fine > 0 ? (collectFine ? 'Paid' : 'Unpaid') : 'None',
+        finePaidDate: fine > 0 && collectFine ? finalReturnDate : null,
+        paymentMethod: fine > 0 && collectFine ? paymentMethod : null,
+        fineReceiptNo: receiptNo,
       };
 
       setTransactions((prev) =>
@@ -354,6 +487,64 @@ export const CirculationProvider = ({ children }) => {
     [transactions]
   );
 
+  const payFine = useCallback(
+    async (transactionId, { paymentMethod = 'Cash', amountPaid, notes = '' } = {}) => {
+      const txn = transactions.find((t) => String(t.id) === String(transactionId));
+      if (!txn) {
+        throw new Error('Transaction record not found');
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const fineInfo = getTransactionFineInfo(txn, today);
+      const finalAmount = Number(amountPaid) > 0 ? Number(amountPaid) : fineInfo.fineAmount;
+
+      if (finalAmount <= 0) {
+        throw new Error('No outstanding fine amount for this record');
+      }
+
+      const receiptNo = `REC-${Math.floor(1000 + Math.random() * 9000)}`;
+      const updatedTxn = {
+        ...txn,
+        fineAmount: finalAmount,
+        fineStatus: 'Paid',
+        finePaidDate: today,
+        paymentMethod: paymentMethod || 'Cash',
+        fineReceiptNo: receiptNo,
+        notes: notes ? `${txn.notes ? txn.notes + ' | ' : ''}${notes}` : txn.notes,
+      };
+
+      setTransactions((prev) =>
+        prev.map((t) => (String(t.id) === String(transactionId) ? updatedTxn : t))
+      );
+
+      return updatedTxn;
+    },
+    [transactions]
+  );
+
+  const waiveFine = useCallback(
+    async (transactionId, reason = 'Administrative Waiver') => {
+      const txn = transactions.find((t) => String(t.id) === String(transactionId));
+      if (!txn) {
+        throw new Error('Transaction record not found');
+      }
+
+      const updatedTxn = {
+        ...txn,
+        fineAmount: 0,
+        fineStatus: 'Waived',
+        notes: `${txn.notes ? txn.notes + ' | ' : ''}Fine waived: ${reason}`,
+      };
+
+      setTransactions((prev) =>
+        prev.map((t) => (String(t.id) === String(transactionId) ? updatedTxn : t))
+      );
+
+      return updatedTxn;
+    },
+    [transactions]
+  );
+
   return (
     <CirculationContext.Provider
       value={{
@@ -362,6 +553,10 @@ export const CirculationProvider = ({ children }) => {
         issueBook,
         returnBook,
         renewBook,
+        payFine,
+        waiveFine,
+        getTransactionFineInfo,
+        DAILY_FINE_RATE,
       }}
     >
       {children}

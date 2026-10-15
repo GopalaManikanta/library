@@ -24,8 +24,6 @@ export const generateFallbackCover = (title = '', _author = '', category = '') =
   return FALLBACK_COVERS[seed % FALLBACK_COVERS.length];
 };
 
-export const DEFAULT_BOOK_COVER = FALLBACK_COVERS[0];
-
 export const getVerifiedCover = (title = '', isbn = '', author = '', category = '', existingCover = '') => {
   if (existingCover && !existingCover.startsWith('data:')) {
     return existingCover;
