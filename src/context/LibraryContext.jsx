@@ -9,13 +9,53 @@ const STORAGE_KEYS = {
   ACTIVITIES: 'lms_activities_data',
 };
 
+export const formatRelativeTime = (timestamp) => {
+  if (!timestamp) return 'Just now';
+  let timeMs = typeof timestamp === 'number' ? timestamp : Date.parse(timestamp);
+  if (isNaN(timeMs)) {
+    return 'Just now';
+  }
+  const diffSec = Math.floor((Date.now() - timeMs) / 1000);
+  if (diffSec < 45) {
+    return 'Just now';
+  }
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) {
+    return `${diffMin}m ago`;
+  }
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) {
+    return `${diffHour}h ago`;
+  }
+  const diffDays = Math.floor(diffHour / 24);
+  if (diffDays === 1) {
+    return 'Yesterday';
+  }
+  if (diffDays < 7) {
+    return `${diffDays}d ago`;
+  }
+  return new Date(timeMs).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+};
+
 const loadActivitiesFromStorage = () => {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.ACTIVITIES);
     if (!data) return [];
     const parsed = JSON.parse(data);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      return parsed.map((act, idx) => {
+        let ts = act.timestamp;
+        if (ts === 'Just now' || typeof ts !== 'number') {
+          ts = Date.now() - (idx + 1) * 3 * 60 * 1000;
+        }
+        return {
+          ...act,
+          timestamp: ts,
+        };
+      });
     }
     return [];
   } catch {
@@ -42,7 +82,7 @@ const LibraryContextComposer = ({ children }) => {
       title,
       description,
       badge,
-      timestamp: 'Just now',
+      timestamp: Date.now(),
     };
     setActivities((prev) => [newActivity, ...prev.slice(0, 19)]);
   }, []);
@@ -77,6 +117,48 @@ const LibraryContextComposer = ({ children }) => {
       if (target) {
         logActivity('book', 'Book Deleted', `"${target.title}" removed from library catalog.`, 'Removed');
       }
+      return result;
+    },
+    [bookCtx, logActivity]
+  );
+
+  const addCategory = useCallback(
+    async (categoryData) => {
+      const result = await bookCtx.addCategory(categoryData);
+      logActivity(
+        'category',
+        'New Category Added',
+        `Category "${result.name}" added to subject classifications.`,
+        'Category'
+      );
+      return result;
+    },
+    [bookCtx, logActivity]
+  );
+
+  const updateCategory = useCallback(
+    async (id, updatedData) => {
+      const result = await bookCtx.updateCategory(id, updatedData);
+      logActivity(
+        'category',
+        'Category Updated',
+        `Category "${result.name}" details updated.`,
+        'Category'
+      );
+      return result;
+    },
+    [bookCtx, logActivity]
+  );
+
+  const deleteCategory = useCallback(
+    async (id) => {
+      const result = await bookCtx.deleteCategory(id);
+      logActivity(
+        'category',
+        'Category Removed',
+        `Category "${result.name}" deleted. Any assigned volumes were moved to General.`,
+        'Category'
+      );
       return result;
     },
     [bookCtx, logActivity]
@@ -203,13 +285,19 @@ const LibraryContextComposer = ({ children }) => {
     const booksAvailable = bookCtx.books.filter(
       (b) => Number(b.availableCopies ?? b.totalCopies ?? 1) > 0
     ).length;
-    const totalCategories = Array.from(
+    const totalCategories = (bookCtx.categories && bookCtx.categories.length) || Array.from(
       new Set(bookCtx.books.map((b) => b.category).filter(Boolean))
     ).length;
 
     const activeTransactions = circulationCtx.transactions.filter((t) => t.status === 'Active');
+    const returnedTransactions = circulationCtx.transactions.filter((t) => t.status === 'Returned');
     const booksIssued = activeTransactions.length;
+    const booksReturned = returnedTransactions.length;
     const overdueBooks = activeTransactions.filter((t) => t.dueDate < currentDateStr).length;
+
+    const activeMembers = memberCtx.members.filter(
+      (m) => String(m.status || 'Active').toLowerCase() === 'active'
+    ).length;
 
     const fineCollected = circulationCtx.transactions
       .filter((t) => t.fineStatus === 'Paid')
@@ -224,7 +312,9 @@ const LibraryContextComposer = ({ children }) => {
       totalCopies,
       totalAvailableCopies,
       totalMembers: memberCtx.members.length,
+      activeMembers,
       booksIssued,
+      booksReturned,
       booksAvailable,
       overdueBooks,
       totalCategories,
@@ -232,12 +322,17 @@ const LibraryContextComposer = ({ children }) => {
       finePending,
       totalFines: fineCollected + finePending,
     };
-  }, [bookCtx.books, memberCtx.members.length, circulationCtx.transactions, currentDateStr]);
+  }, [bookCtx.books, bookCtx.categories, memberCtx.members, circulationCtx.transactions, currentDateStr]);
 
   const value = useMemo(
     () => ({
       books: bookCtx.books,
       setBooks: bookCtx.setBooks,
+      categories: bookCtx.categories,
+      setCategories: bookCtx.setCategories,
+      addCategory,
+      updateCategory,
+      deleteCategory,
       loading: bookCtx.loading || memberCtx.loading,
       error: bookCtx.error || memberCtx.error,
       refreshBooks: bookCtx.refreshBooks,
@@ -269,6 +364,11 @@ const LibraryContextComposer = ({ children }) => {
     [
       bookCtx.books,
       bookCtx.setBooks,
+      bookCtx.categories,
+      bookCtx.setCategories,
+      addCategory,
+      updateCategory,
+      deleteCategory,
       bookCtx.loading,
       bookCtx.error,
       bookCtx.refreshBooks,

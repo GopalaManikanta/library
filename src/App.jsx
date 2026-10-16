@@ -14,6 +14,7 @@ import { BookList } from './pages/BookList';
 import { BookDetails } from './pages/BookDetails';
 import { MemberList } from './pages/MemberList';
 import { Circulation } from './pages/Circulation';
+import { Reports } from './pages/Reports';
 
 function App() {
   return (
@@ -62,6 +63,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Circulation />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute>
+                  <Reports />
                 </ProtectedRoute>
               }
             />

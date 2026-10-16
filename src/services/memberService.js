@@ -66,40 +66,54 @@ export const memberService = {
   },
 
   async createMember(newMember) {
-    const names = (newMember.fullName || '').split(' ');
-    const res = await axios.post(
-      'https://dummyjson.com/users/add',
-      {
-        firstName: names[0] || 'Member',
-        lastName: names.slice(1).join(' ') || '',
-        email: newMember.email,
-        phone: newMember.mobileNumber,
-      },
-      { timeout: 7000 }
-    );
+    try {
+      const names = (newMember.fullName || '').split(' ');
+      const res = await axios.post(
+        'https://dummyjson.com/users/add',
+        {
+          firstName: names[0] || 'Member',
+          lastName: names.slice(1).join(' ') || '',
+          email: newMember.email,
+          phone: newMember.mobileNumber,
+        },
+        { timeout: 7000 }
+      );
 
-    return {
-      ...newMember,
-      apiId: res.data?.id,
-    };
+      return {
+        ...newMember,
+        apiId: res.data?.id,
+      };
+    } catch {
+      return newMember;
+    }
   },
 
   async updateMember(id, updatedMember) {
-    const numericId = String(id).replace(/\D/g, '') || '1';
-    await axios.put(
-      `https://dummyjson.com/users/${numericId}`,
-      {
-        email: updatedMember.email,
-        phone: updatedMember.mobileNumber,
-      },
-      { timeout: 7000 }
-    );
-    return updatedMember;
+    try {
+      const rawNum = Number(String(id).replace(/\D/g, '')) || 1;
+      const validApiId = ((rawNum - 1) % 100) + 1;
+      await axios.put(
+        `https://dummyjson.com/users/${validApiId}`,
+        {
+          email: updatedMember.email,
+          phone: updatedMember.mobileNumber,
+        },
+        { timeout: 7000 }
+      );
+      return updatedMember;
+    } catch {
+      return updatedMember;
+    }
   },
 
   async deleteMember(id) {
-    const numericId = String(id).replace(/\D/g, '') || '1';
-    await axios.delete(`https://dummyjson.com/users/${numericId}`, { timeout: 7000 });
-    return id;
+    try {
+      const rawNum = Number(String(id).replace(/\D/g, '')) || 1;
+      const validApiId = ((rawNum - 1) % 100) + 1;
+      await axios.delete(`https://dummyjson.com/users/${validApiId}`, { timeout: 7000 });
+      return id;
+    } catch {
+      return id;
+    }
   },
 };

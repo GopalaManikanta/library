@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-toastify';
 import {
@@ -11,7 +12,6 @@ import {
   Mail,
   Phone,
   MapPin,
-  Calendar,
   IdCard,
   Menu,
   ChevronLeft,
@@ -23,10 +23,10 @@ import {
   BookOpen,
   ArrowRight,
   ArrowLeft,
-  AlertTriangle,
 } from 'lucide-react';
 import { useLibrary } from '../context/LibraryContext';
 import { Sidebar } from '../components/Sidebar';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 import { MEMBER_AVATARS } from '../services/memberService';
 
 export const MemberList = () => {
@@ -198,33 +198,6 @@ export const MemberList = () => {
             </header>
 
             <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-5">
-              {deletingMember && (
-                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-3">
-                    <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
-                    <p className="text-rose-900 font-semibold">
-                      Are you sure you want to remove <strong className="font-extrabold text-slate-900">{deletingMember.fullName}</strong> from the library directory?
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setDeletingMember(null)}
-                      className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 font-bold hover:bg-slate-50 transition cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleConfirmDelete}
-                      disabled={isSubmitting}
-                      className="px-4 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold transition cursor-pointer shadow-xs disabled:opacity-50"
-                    >
-                      {isSubmitting ? 'Deleting...' : 'Yes, Delete'}
-                    </button>
-                  </div>
-                </div>
-              )}
 
               <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
@@ -436,10 +409,14 @@ export const MemberList = () => {
                       </div>
 
                       <div className="px-4 py-2.5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                        <span className="flex items-center gap-1 text-slate-400">
-                          <Calendar className="w-3.5 h-3.5 text-teal-600" />
-                          <span>Joined: <strong className="text-slate-700">{member.membershipDate}</strong></span>
-                        </span>
+                        <Link
+                          to={`/circulation?action=issue&memberId=${member.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 font-bold text-xs transition border border-teal-200"
+                        >
+                          <BookOpen className="w-3.5 h-3.5" />
+                          <span>Assign Book</span>
+                        </Link>
 
                         <button
                           type="button"
@@ -574,6 +551,17 @@ export const MemberList = () => {
           />
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(deletingMember)}
+        title="Confirm Member Removal"
+        itemName={deletingMember?.fullName}
+        message="Are you sure you want to remove this member from the library patron directory? Active loan histories and account records will be affected."
+        confirmLabel="Remove Member"
+        isSubmitting={isSubmitting}
+        onConfirm={handleConfirmDelete}
+        onClose={() => setDeletingMember(null)}
+      />
     </div>
   );
 };
@@ -608,6 +596,14 @@ const FullPageMemberView = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <Link
+            to={`/circulation?action=issue&memberId=${member.id}`}
+            className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Assign Book</span>
+          </Link>
+
           <button
             type="button"
             onClick={onEdit}
@@ -719,9 +715,18 @@ const FullPageMemberView = ({
               <p className="text-xs text-teal-700">Currently issued volumes across catalog</p>
             </div>
           </div>
-          <span className="text-lg font-black text-teal-900 bg-white px-4 py-1.5 rounded-2xl border border-teal-200 shadow-2xs">
-            {member.booksIssuedCount} / 5 Loans
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-lg font-black text-teal-900 bg-white px-4 py-1.5 rounded-2xl border border-teal-200 shadow-2xs">
+              {member.booksIssuedCount} / 5 Loans
+            </span>
+            <Link
+              to={`/circulation?action=issue&memberId=${member.id}`}
+              className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition cursor-pointer shadow-sm flex items-center gap-1.5"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Issue Book</span>
+            </Link>
+          </div>
         </div>
       </main>
     </div>

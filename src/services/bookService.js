@@ -41,7 +41,6 @@ export const bookService = {
       const response = await axios.get(
         `${OPEN_LIBRARY_API}/search.json?q=computer+science+OR+programming+OR+algorithms+OR+database+OR+software+engineering&limit=${Math.max(limit, 40)}&fields=key,title,author_name,first_publish_year,cover_i,isbn,publisher,subject`,
         {
-          headers: { 'User-Agent': 'LibraryManagementApp/1.0 (contact@libraryapp.org)' },
           timeout: 10000,
         }
       );
