@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -25,9 +25,18 @@ export const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedRoleTab, setSelectedRoleTab] = useState('admin');
-  const { login } = useAuth();
+  const [selectedMemberId, setSelectedMemberId] = useState('mem-student');
+  const { login, getRegisteredMembers } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const registeredMembers = useMemo(() => {
+    return getRegisteredMembers();
+  }, [getRegisteredMembers]);
+
+  const activeMemberPreview = useMemo(() => {
+    return registeredMembers.find((m) => String(m.id) === String(selectedMemberId)) || registeredMembers[0] || null;
+  }, [registeredMembers, selectedMemberId]);
 
   const from = location.state?.from?.pathname || '/dashboard';
 
@@ -58,6 +67,16 @@ export const Login = () => {
     }
   };
 
+  const handleSelectMember = (memberId) => {
+    setSelectedMemberId(memberId);
+    const target = registeredMembers.find((m) => String(m.id) === String(memberId));
+    if (target) {
+      setValue('email', target.email);
+      setValue('password', 'Password@123');
+      toast.info(`Selected Member: ${target.fullName} (${target.membershipId})`);
+    }
+  };
+
   const handleRoleTabChange = (role) => {
     setSelectedRoleTab(role);
     if (role === 'admin') {
@@ -65,9 +84,11 @@ export const Login = () => {
       setValue('password', 'Password@123');
       toast.info('Switched Mode: System Administrator');
     } else {
-      setValue('email', 'student@library.com');
+      const target = registeredMembers.find((m) => String(m.id) === String(selectedMemberId)) || registeredMembers[0];
+      const targetEmail = target?.email || 'student@library.com';
+      setValue('email', targetEmail);
       setValue('password', 'Password@123');
-      toast.info('Switched Mode: Scholar / Member');
+      toast.info(`Switched Mode: Scholar / Member (${target?.fullName || 'Student'})`);
     }
   };
 
@@ -221,11 +242,82 @@ export const Login = () => {
             </button>
           </div>
 
+          {selectedRoleTab === 'student' && (
+            <div className="mb-4 p-3.5 bg-gradient-to-br from-teal-50/80 to-slate-50 border border-teal-200/90 rounded-2xl shadow-2xs space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-extrabold text-teal-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Users2 className="w-3.5 h-3.5 text-teal-700" />
+                  Select Registered Member Account
+                </label>
+                <span className="text-[10px] font-mono text-teal-700 bg-white px-2 py-0.5 rounded-full border border-teal-200 font-bold">
+                  {registeredMembers.length} Members
+                </span>
+              </div>
+
+              <select
+                value={selectedMemberId}
+                onChange={(e) => handleSelectMember(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-teal-300 focus:border-teal-600 rounded-xl text-xs font-bold text-slate-800 focus:outline-none cursor-pointer shadow-2xs"
+              >
+                {registeredMembers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.fullName} ({m.membershipId}) — {m.email}
+                  </option>
+                ))}
+              </select>
+
+              {activeMemberPreview && (
+                <div className="flex items-center gap-2.5 pt-2 border-t border-teal-200/60">
+                  <img
+                    src={activeMemberPreview.avatar}
+                    alt={activeMemberPreview.fullName}
+                    className="w-8 h-8 rounded-full object-cover border-2 border-teal-400 bg-white shadow-2xs shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-black text-slate-900 truncate">
+                      {activeMemberPreview.fullName}
+                    </p>
+                    <p className="text-[10px] text-teal-700 font-semibold truncate">
+                      {activeMemberPreview.department} • {activeMemberPreview.semester}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                    {activeMemberPreview.status}
+                  </span>
+                </div>
+              )}
+
+              <div className="pt-1.5 border-t border-slate-200/80">
+                <p className="text-[10px] uppercase font-bold text-slate-500 mb-1.5">Quick Member Switcher:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {registeredMembers.slice(0, 6).map((m) => {
+                    const isSelected = String(m.id) === String(selectedMemberId);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => handleSelectMember(m.id)}
+                        className={`text-[10px] font-bold px-2 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-teal-700 text-white border-teal-700 shadow-2xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-teal-300'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        <span>{m.fullName.split(' ')[0]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                  Institutional ID / Email
+                  {selectedRoleTab === 'student' ? 'Member Email / Name / ID' : 'Institutional Email'}
                 </label>
                 <span className="text-[10px] font-mono text-teal-700 font-bold">REQUIRED</span>
               </div>
@@ -234,14 +326,14 @@ export const Login = () => {
                   <Mail className="h-4 w-4" />
                 </div>
                 <input
-                  type="email"
-                  placeholder="admin@library.com"
+                  type="text"
+                  placeholder={
+                    selectedRoleTab === 'student'
+                      ? 'e.g. emily.johnson@x.dummyjson.com or Emily Johnson'
+                      : 'admin@library.com'
+                  }
                   {...register('email', {
-                    required: 'Email address is required',
-                    pattern: {
-                      value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: 'Enter a valid institutional email'
-                    }
+                    required: 'Institutional Email or Member Name is required',
                   })}
                   className={`w-full pl-10 pr-4 py-3 bg-white border ${
                     errors.email ? 'border-rose-400 focus:ring-rose-400' : 'border-slate-300 focus:border-teal-600'
@@ -332,11 +424,16 @@ export const Login = () => {
           </form>
 
           <div className="mt-4 p-3 rounded-xl bg-teal-50/70 border border-teal-200/80 flex items-center justify-between text-xs">
-            <span className="text-teal-900 font-bold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-teal-600" />
-              Active Profile: <span className="capitalize">{selectedRoleTab}</span>
+            <span className="text-teal-900 font-bold flex items-center gap-1.5 truncate max-w-[240px]">
+              <span className="w-2 h-2 rounded-full bg-teal-600 shrink-0" />
+              Active Profile:{' '}
+              <span className="font-extrabold truncate">
+                {selectedRoleTab === 'student'
+                  ? `${activeMemberPreview?.fullName || 'Student'} (${activeMemberPreview?.membershipId || 'Member'})`
+                  : 'System Administrator'}
+              </span>
             </span>
-            <span className="font-mono text-[11px] text-teal-800 font-extrabold bg-white px-2 py-0.5 rounded border border-teal-200">
+            <span className="font-mono text-[11px] text-teal-800 font-extrabold bg-white px-2 py-0.5 rounded border border-teal-200 shrink-0">
               Password@123
             </span>
           </div>

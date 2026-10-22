@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useBooks } from './BookContext';
 import { useMembers } from './MemberContext';
 import { getVerifiedCover } from '../services/bookService';
@@ -60,9 +60,81 @@ export const getTransactionFineInfo = (txn, todayStr = new Date().toISOString().
   };
 };
 
-const STORAGE_KEY = 'lms_transactions_data_v5';
+const STORAGE_KEY = 'lms_transactions_data_v6';
 
 const INITIAL_TRANSACTIONS = [
+  {
+    id: 'txn-stu-1',
+    transactionId: 'TXN-9001',
+    memberId: 'mem-student',
+    memberName: 'Demo Student',
+    memberEmail: 'student@library.com',
+    memberAvatar: 'https://dummyjson.com/icon/michaelw/128',
+    bookId: '1',
+    bookTitle: 'Code: The Hidden Language of Computer Hardware and Software',
+    bookAuthor: 'Charles Petzold',
+    bookIsbn: '9780735605053',
+    bookCover: 'https://covers.openlibrary.org/b/id/460968-L.jpg',
+    bookCategory: 'Computer Science',
+    issueDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    dueDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    returnDate: null,
+    status: 'Active',
+    fineAmount: 0,
+    fineStatus: 'None',
+    finePaidDate: null,
+    paymentMethod: null,
+    fineReceiptNo: null,
+    notes: 'Semester study guide volume',
+  },
+  {
+    id: 'txn-stu-2',
+    transactionId: 'TXN-9002',
+    memberId: 'mem-student',
+    memberName: 'Demo Student',
+    memberEmail: 'student@library.com',
+    memberAvatar: 'https://dummyjson.com/icon/michaelw/128',
+    bookId: '2',
+    bookTitle: 'Computer Science: An Overview',
+    bookAuthor: 'J. Glenn Brookshear',
+    bookIsbn: '9780321387011',
+    bookCover: 'https://covers.openlibrary.org/b/id/193281-L.jpg',
+    bookCategory: 'Computer Science',
+    issueDate: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    returnDate: null,
+    status: 'Active',
+    fineAmount: 20,
+    fineStatus: 'Unpaid',
+    finePaidDate: null,
+    paymentMethod: null,
+    fineReceiptNo: null,
+    notes: 'Late volume assessment (overdue by 2 days)',
+  },
+  {
+    id: 'txn-stu-3',
+    transactionId: 'TXN-9003',
+    memberId: 'mem-student',
+    memberName: 'Demo Student',
+    memberEmail: 'student@library.com',
+    memberAvatar: 'https://dummyjson.com/icon/michaelw/128',
+    bookId: '3',
+    bookTitle: 'Algorithms to Live By: The Computer Science of Human Decisions',
+    bookAuthor: 'Brian Christian',
+    bookIsbn: '9780008166090',
+    bookCover: 'https://covers.openlibrary.org/b/id/8042539-L.jpg',
+    bookCategory: 'Algorithms',
+    issueDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    dueDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    returnDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    status: 'Returned',
+    fineAmount: 10,
+    fineStatus: 'Paid',
+    finePaidDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    paymentMethod: 'UPI',
+    fineReceiptNo: 'REC-STU-9901',
+    notes: 'Settled at central library counter',
+  },
   {
     id: 'txn-101',
     transactionId: 'TXN-1001',
@@ -269,8 +341,108 @@ export const CirculationProvider = ({ children }) => {
   }, [transactions]);
 
   const issueBook = useCallback(
-    async ({ memberId, bookId, issueDate, dueDate, notes = '' }) => {
-      const member = members.find((m) => String(m.id) === String(memberId));
+    async ({
+      memberId,
+      memberEmail = '',
+      memberName = '',
+      membershipId = '',
+      bookId,
+      issueDate,
+      dueDate,
+      notes = ''
+    }) => {
+      const cleanMemberId = String(memberId || '').trim();
+      const cleanEmail = String(memberEmail || '').trim().toLowerCase();
+      const cleanName = String(memberName || '').trim().toLowerCase();
+      const cleanMembershipId = String(membershipId || '').trim().toLowerCase();
+
+      const isMatch = (m) => {
+        if (!m) return false;
+        const mId = String(m.id || '').trim();
+        const mEmail = String(m.email || '').trim().toLowerCase();
+        const mName = String(m.fullName || m.name || '').trim().toLowerCase();
+        const mCode = String(m.membershipId || '').trim().toLowerCase();
+
+        if (cleanMemberId && (mId === cleanMemberId || mEmail === cleanMemberId.toLowerCase() || mCode === cleanMemberId.toLowerCase() || mName === cleanMemberId.toLowerCase())) {
+          return true;
+        }
+        if (cleanEmail && mEmail === cleanEmail) {
+          return true;
+        }
+        if (cleanMembershipId && (mCode === cleanMembershipId || mId.toLowerCase() === cleanMembershipId)) {
+          return true;
+        }
+        if (cleanName && mName === cleanName) {
+          return true;
+        }
+        if ((cleanMemberId === 'u-2' || cleanMemberId === 'mem-student' || cleanEmail === 'student@library.com' || cleanName.includes('demo student')) &&
+            (mId === 'mem-student' || mEmail === 'student@library.com')) {
+          return true;
+        }
+        return false;
+      };
+
+      let member = members.find(isMatch);
+
+      if (!member) {
+        try {
+          const cached = localStorage.getItem('lms_members_dummyjson_data_v2');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed)) {
+              member = parsed.find(isMatch);
+            }
+          }
+        } catch {}
+      }
+
+      if (!member) {
+        try {
+          const userStorage = localStorage.getItem('lms_users_db_v2');
+          if (userStorage) {
+            const users = JSON.parse(userStorage);
+            const foundUser = users.find(
+              (u) =>
+                String(u.id) === cleanMemberId ||
+                (u.email && u.email.toLowerCase() === cleanMemberId.toLowerCase()) ||
+                (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) ||
+                (cleanName && u.name && u.name.toLowerCase() === cleanName)
+            );
+            if (foundUser) {
+              member = {
+                id: String(foundUser.id || cleanMemberId || 'mem-student'),
+                membershipId: foundUser.membershipId || `LIB-MEM-${foundUser.id}`,
+                fullName: foundUser.name || 'Library Member',
+                name: foundUser.name || 'Library Member',
+                email: (foundUser.email || 'student@library.com').toLowerCase(),
+                status: 'Active',
+                avatar: foundUser.avatar || 'https://dummyjson.com/icon/michaelw/128',
+                department: foundUser.department || 'Computer Science & Engineering',
+                semester: foundUser.semester || '6th Semester',
+                booksIssuedCount: 0,
+              };
+              setMembers((prev) => [member, ...prev]);
+            }
+          }
+        } catch {}
+      }
+
+      if (!member && (cleanMemberId === 'u-2' || cleanMemberId === 'mem-student' || cleanMemberId.startsWith('u-') || cleanEmail.includes('student') || !cleanMemberId)) {
+        member = {
+          id: cleanMemberId || 'mem-student',
+          membershipId: cleanMembershipId || 'LIB-STU-2026',
+          fullName: memberName || 'Demo Student',
+          name: memberName || 'Demo Student',
+          email: cleanEmail || 'student@library.com',
+          status: 'Active',
+          avatar: 'https://dummyjson.com/icon/michaelw/128',
+          department: 'Computer Science & Engineering',
+          semester: '6th Semester',
+          booksIssuedCount: 0,
+        };
+        setMembers((prev) => [member, ...prev]);
+      }
+
       if (!member) {
         throw new Error('Selected member not found in registry');
       }
@@ -545,20 +717,73 @@ export const CirculationProvider = ({ children }) => {
     [transactions]
   );
 
+  const [reservations, setReservations] = useState(() => {
+    try {
+      const data = localStorage.getItem('lms_book_reservations_v1');
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('lms_book_reservations_v1', JSON.stringify(reservations));
+  }, [reservations]);
+
+  const reserveBook = useCallback((user, book) => {
+    const newReservation = {
+      id: 'res-' + Date.now(),
+      reservationId: 'RES-' + Math.floor(1000 + Math.random() * 9000),
+      bookId: String(book.id),
+      bookTitle: book.title,
+      bookAuthor: book.author,
+      bookCover: book.coverImage,
+      memberId: user.studentId || user.membershipId || user.id,
+      memberName: user.name,
+      memberEmail: user.email,
+      requestDate: new Date().toISOString().split('T')[0],
+      status: 'Ready for Pickup',
+      pickupLocation: 'Central Library Counter 2',
+      holdExpiresDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    };
+    setReservations((prev) => [newReservation, ...prev]);
+    return newReservation;
+  }, []);
+
+  const cancelReservation = useCallback((resId) => {
+    setReservations((prev) => prev.filter((r) => r.id !== resId));
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      transactions,
+      setTransactions,
+      reservations,
+      reserveBook,
+      cancelReservation,
+      issueBook,
+      returnBook,
+      renewBook,
+      payFine,
+      waiveFine,
+      getTransactionFineInfo,
+      DAILY_FINE_RATE,
+    }),
+    [
+      transactions,
+      reservations,
+      reserveBook,
+      cancelReservation,
+      issueBook,
+      returnBook,
+      renewBook,
+      payFine,
+      waiveFine,
+    ]
+  );
+
   return (
-    <CirculationContext.Provider
-      value={{
-        transactions,
-        setTransactions,
-        issueBook,
-        returnBook,
-        renewBook,
-        payFine,
-        waiveFine,
-        getTransactionFineInfo,
-        DAILY_FINE_RATE,
-      }}
-    >
+    <CirculationContext.Provider value={value}>
       {children}
     </CirculationContext.Provider>
   );

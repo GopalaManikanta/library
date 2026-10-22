@@ -19,8 +19,8 @@ const FALLBACK_COVERS = [
   'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&q=80&w=600',
 ];
 
-export const generateFallbackCover = (title = '', _author = '', category = '') => {
-  const seed = (String(title || '') + String(category || '')).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+export const generateFallbackCover = (title = '', author = '', category = '') => {
+  const seed = (String(title || '') + String(author || '') + String(category || '')).split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
   return FALLBACK_COVERS[seed % FALLBACK_COVERS.length];
 };
 

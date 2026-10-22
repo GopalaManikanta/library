@@ -16,7 +16,10 @@ import {
   ZoomIn,
   MapPin,
   Image as ImageIcon,
+  BookmarkCheck,
+  RotateCcw,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
 import { Sidebar } from '../components/Sidebar';
 import { BookForm as BookEditFullPage } from '../components/BookForm';
@@ -26,7 +29,21 @@ import { getVerifiedCover, generateFallbackCover } from '../services/bookService
 export const BookDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { books, updateBook, deleteBook, categories } = useLibrary();
+  const { currentUser } = useAuth();
+  const {
+    books,
+    updateBook,
+    deleteBook,
+    categories,
+    reservations,
+    reserveBook,
+    issueBook,
+    returnBook,
+    transactions,
+    cancelReservation,
+  } = useLibrary();
+
+  const isStudent = currentUser?.role === 'Student';
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -73,6 +90,95 @@ export const BookDetails = () => {
       setCopiedIsbn(true);
       toast.success('ISBN copied to clipboard!');
       setTimeout(() => setCopiedIsbn(false), 2000);
+    }
+  };
+
+  const isReservedByMe =
+    isStudent &&
+    reservations?.some(
+      (r) =>
+        String(r.bookId) === String(book?.id) &&
+        r.memberId === currentUser?.id &&
+        r.status === 'Active'
+    );
+
+  const isBorrowedByMe =
+    isStudent &&
+    transactions?.some(
+      (t) =>
+        String(t.bookId) === String(book?.id) &&
+        (String(t.memberId) === String(currentUser?.id) || t.memberEmail === currentUser?.email) &&
+        t.status === 'Active'
+    );
+
+  const handleReserve = () => {
+    if (isReservedByMe) {
+      toast.info('You already hold an active reservation for this volume.');
+      return;
+    }
+    reserveBook(currentUser, book);
+    toast.success(`Reserved "${book.title}". Reserved hold expires in 3 days.`);
+  };
+
+  const handleBorrow = async () => {
+    if (isBorrowedByMe) {
+      toast.info('You already have an active loan for this book.');
+      return;
+    }
+    if (avail <= 0) {
+      toast.error('No copies available to check out right now.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      await issueBook({
+        memberId: currentUser?.id || 'mem-student',
+        memberEmail: currentUser?.email || 'student@library.com',
+        memberName: currentUser?.name || 'Demo Student',
+        membershipId: currentUser?.membershipId || 'LIB-STU-2026',
+        bookId: book.id,
+        issueDate: today,
+        dueDate,
+        notes: `Self-checkout via Book Details Page by ${currentUser?.name || 'Student'}`,
+      });
+      const matchingRes = reservations?.find(
+        (r) =>
+          String(r.bookId) === String(book.id) &&
+          (String(r.memberId) === String(currentUser?.id) || r.memberEmail === currentUser?.email)
+      );
+      if (matchingRes) {
+        cancelReservation(matchingRes.id);
+      }
+      toast.success(`"${book.title}" checked out successfully! Return by ${dueDate}.`);
+    } catch (err) {
+      toast.error(err.message || 'Failed to borrow book');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const matchingActiveLoan =
+    isStudent &&
+    transactions?.find(
+      (t) =>
+        String(t.bookId) === String(book?.id) &&
+        (String(t.memberId) === String(currentUser?.id) || t.memberEmail === currentUser?.email) &&
+        t.status === 'Active'
+    );
+
+  const handleReturn = async () => {
+    if (!matchingActiveLoan) return;
+    setIsSubmitting(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await returnBook(matchingActiveLoan.id, today);
+      toast.success(`"${book.title}" returned to library shelf successfully!`);
+    } catch (err) {
+      toast.error(err.message || 'Failed to return book');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -132,34 +238,75 @@ export const BookDetails = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <Link
-                to={`/circulation?action=issue&bookId=${book.id}`}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm ${
-                  avail > 0
-                    ? 'bg-teal-600 hover:bg-teal-700 text-white cursor-pointer'
-                    : 'bg-slate-200 text-slate-400 pointer-events-none'
-                }`}
-                title={avail > 0 ? 'Issue this volume to a registered member' : 'No copies available to issue'}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Issue to Member</span>
-              </Link>
+              {isStudent ? (
+                <div className="flex items-center gap-2">
+                  {isBorrowedByMe ? (
+                    <button
+                      onClick={handleReturn}
+                      disabled={isSubmitting}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 cursor-pointer"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Return Volume</span>
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleReserve}
+                        disabled={isReservedByMe}
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm ${
+                          isReservedByMe
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300 pointer-events-none'
+                            : 'border border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer'
+                        }`}
+                      >
+                        <BookmarkCheck className="w-3.5 h-3.5" />
+                        <span>{isReservedByMe ? 'Reserved' : 'Reserve Hold'}</span>
+                      </button>
 
-              <button
-                onClick={() => setIsEditing(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition cursor-pointer"
-              >
-                <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                <span>Edit</span>
-              </button>
+                      <button
+                        onClick={handleBorrow}
+                        disabled={avail === 0 || isSubmitting}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm bg-teal-600 hover:bg-teal-700 text-white cursor-pointer shadow-teal-600/20"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>Borrow Book</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <Link
+                    to={`/circulation?action=issue&bookId=${book.id}`}
+                    className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm ${
+                      avail > 0
+                        ? 'bg-teal-600 hover:bg-teal-700 text-white cursor-pointer'
+                        : 'bg-slate-200 text-slate-400 pointer-events-none'
+                    }`}
+                    title={avail > 0 ? 'Issue this volume to a registered member' : 'No copies available to issue'}
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Issue to Member</span>
+                  </Link>
 
-              <button
-                onClick={() => setIsDeleting(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 text-xs font-bold transition cursor-pointer"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                <span>Delete</span>
-              </button>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Edit</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsDeleting(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100 text-xs font-bold transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Delete</span>
+                  </button>
+                </>
+              )}
             </div>
           </header>
 
@@ -539,12 +686,33 @@ export const BookDetails = () => {
                   </Link>
 
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition cursor-pointer"
-                    >
-                      Edit Record
-                    </button>
+                    {isStudent ? (
+                      isBorrowedByMe ? (
+                        <button
+                          onClick={handleReturn}
+                          disabled={isSubmitting}
+                          className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition cursor-pointer shadow-md shadow-rose-600/20 flex items-center gap-1.5"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Return Book to Library</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleBorrow}
+                          disabled={avail === 0 || isSubmitting}
+                          className="px-4 py-2 rounded-xl text-xs font-bold transition bg-teal-600 hover:bg-teal-700 text-white cursor-pointer shadow-md shadow-teal-600/20"
+                        >
+                          Borrow Book
+                        </button>
+                      )
+                    ) : (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition cursor-pointer"
+                      >
+                        Edit Record
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

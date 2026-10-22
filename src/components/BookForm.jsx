@@ -4,12 +4,13 @@ import { ArrowLeft, Search, X, CheckCircle2 } from 'lucide-react';
 import { getVerifiedCover, generateFallbackCover } from '../services/bookService';
 
 const CURRENT_YEAR = new Date().getFullYear();
+const DEFAULT_EMPTY_CATEGORIES = [];
 
 export const BookForm = ({
   title,
   subtitle,
   defaultValues,
-  categories = [],
+  categories = DEFAULT_EMPTY_CATEGORIES,
   searchGoogleBooks,
   searchLocalBooks,
   onBack,

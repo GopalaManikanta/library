@@ -30,7 +30,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { MEMBER_AVATARS } from '../services/memberService';
 
 export const MemberList = () => {
-  const { members, loading, refreshMembers, addMember, updateMember, deleteMember } = useLibrary();
+  const { members, loading, refreshMembers, addMember, updateMember, deleteMember, transactions } = useLibrary();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [viewMode, setViewMode] = useState('list');
@@ -59,6 +59,15 @@ export const MemberList = () => {
         const membershipDate = m.membershipDate || m.joinedDate || '2024-01-15';
         const status = m.status || 'Active';
         const avatar = m.avatar || m.image || MEMBER_AVATARS[idx % MEMBER_AVATARS.length];
+        const memberLoans = (transactions || []).filter(
+          (t) =>
+            (String(t.memberId) === String(m.id) ||
+              (m.email && t.memberEmail && t.memberEmail.toLowerCase() === m.email.toLowerCase()) ||
+              (m.membershipId && t.memberId === m.membershipId) ||
+              (fullName && t.memberName && t.memberName.toLowerCase() === fullName.toLowerCase())) &&
+            t.status === 'Active'
+        );
+        const booksIssuedCount = transactions ? memberLoans.length : (Number(m.booksIssuedCount) || 0);
 
         return {
           ...m,
@@ -73,7 +82,7 @@ export const MemberList = () => {
           status,
           avatar,
           image: avatar,
-          booksIssuedCount: Number(m.booksIssuedCount) || 0,
+          booksIssuedCount,
         };
       })
       .filter((m) => {
@@ -90,7 +99,7 @@ export const MemberList = () => {
 
         return matchesSearch && matchesStatus;
       });
-  }, [members, searchQuery, selectedStatus]);
+  }, [members, searchQuery, selectedStatus, transactions]);
 
   const totalPages = Math.max(1, Math.ceil(filteredMembers.length / membersPerPage));
   const paginatedMembers = useMemo(() => {
@@ -508,6 +517,7 @@ export const MemberList = () => {
         {viewMode === 'view' && selectedMember && (
           <FullPageMemberView
             member={selectedMember}
+            transactions={transactions}
             onBack={() => {
               setSelectedMember(null);
               setViewMode('list');
@@ -568,12 +578,26 @@ export const MemberList = () => {
 
 const FullPageMemberView = ({
   member,
+  transactions,
   onBack,
   onEdit,
   onDelete,
   onCopyId,
   copiedId,
 }) => {
+  const [todayDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  const activeLoansList = useMemo(() => {
+    return (transactions || []).filter(
+      (t) =>
+        (String(t.memberId) === String(member.id) ||
+          (member.email && t.memberEmail && t.memberEmail.toLowerCase() === member.email.toLowerCase()) ||
+          (member.membershipId && t.memberId === member.membershipId) ||
+          (member.fullName && t.memberName && t.memberName.toLowerCase() === member.fullName.toLowerCase())) &&
+        t.status === 'Active'
+    );
+  }, [transactions, member]);
+
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <header className="h-16 shrink-0 bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 flex items-center justify-between sticky top-0 z-30">
@@ -727,6 +751,70 @@ const FullPageMemberView = ({
               <span>Issue Book</span>
             </Link>
           </div>
+        </div>
+
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-sm">Issued Books & Circulation Records</h3>
+              <p className="text-[11px] text-slate-500">Live borrowings synchronized across Student & Admin Portals</p>
+            </div>
+            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">
+              {activeLoansList.length} Active Volumes
+            </span>
+          </div>
+
+          {activeLoansList.length === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-xs font-medium space-y-2">
+              <BookOpen className="w-8 h-8 mx-auto text-slate-300" />
+              <p>No active books currently issued to this member.</p>
+              <Link
+                to={`/circulation?action=issue&memberId=${member.id}`}
+                className="inline-flex items-center gap-1.5 text-xs text-teal-700 hover:text-teal-900 font-bold"
+              >
+                <span>Issue a book now</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {activeLoansList.map((loan) => (
+                <div key={loan.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    {loan.bookCover ? (
+                      <img src={loan.bookCover} alt={loan.bookTitle} className="w-10 h-14 object-cover rounded-lg shadow-2xs shrink-0" />
+                    ) : (
+                      <div className="w-10 h-14 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 shrink-0">
+                        <BookOpen className="w-5 h-5" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-black text-slate-900 line-clamp-1">{loan.bookTitle}</p>
+                      <p className="text-[11px] text-slate-500">{loan.bookAuthor} • {loan.bookCategory}</p>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] font-mono text-slate-500">
+                        <span>Issued: {loan.issueDate}</span>
+                        <span>•</span>
+                        <span className={loan.dueDate < todayDate ? 'text-rose-600 font-bold' : 'text-teal-700 font-bold'}>
+                          Due: {loan.dueDate}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${loan.dueDate < todayDate ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      {loan.dueDate < todayDate ? 'Overdue' : 'Active Loan'}
+                    </span>
+                    <Link
+                      to={`/circulation?search=${encodeURIComponent(loan.bookTitle || '')}`}
+                      className="text-xs font-bold px-3 py-1 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition"
+                    >
+                      Circulation Desk
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </main>
     </div>

@@ -1,17 +1,36 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { memberService, MEMBER_AVATARS } from '../services/memberService';
 
 const MemberContext = createContext(null);
 
-const STORAGE_KEY = 'lms_members_dummyjson_data_v1';
+const STORAGE_KEY = 'lms_members_dummyjson_data_v2';
+
+const STUDENT_MEMBER = {
+  id: 'mem-student',
+  membershipId: 'LIB-STU-2026',
+  fullName: 'Demo Student',
+  name: 'Demo Student',
+  email: 'student@library.com',
+  mobileNumber: '9848022338',
+  phone: '9848022338',
+  address: 'Room 304, Kaveri Hostel, University Campus',
+  membershipDate: '2025-08-01',
+  status: 'Active',
+  avatar: 'https://dummyjson.com/icon/michaelw/128',
+  image: 'https://dummyjson.com/icon/michaelw/128',
+  booksIssuedCount: 2,
+  department: 'Computer Science & Engineering',
+  semester: '6th Semester',
+  source: 'Student Registry',
+};
 
 const loadMembersFromStorage = () => {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return [];
+    if (!data) return [STUDENT_MEMBER];
     const parsed = JSON.parse(data);
-    if (Array.isArray(parsed) && parsed.length >= 10) {
-      return parsed.map((m, idx) => ({
+    if (Array.isArray(parsed) && parsed.length >= 1) {
+      const list = parsed.map((m, idx) => ({
         ...m,
         id: String(m.id || `mem-${idx + 1}`),
         membershipId: m.membershipId || `LIB-MEM-${1000 + idx + 1}`,
@@ -31,10 +50,14 @@ const loadMembersFromStorage = () => {
         booksIssuedCount: Number(m.booksIssuedCount) || 0,
         source: m.source || 'DummyJSON API',
       }));
+      if (!list.some((m) => String(m.id) === 'mem-student' || m.email === 'student@library.com')) {
+        list.unshift(STUDENT_MEMBER);
+      }
+      return list;
     }
-    return [];
+    return [STUDENT_MEMBER];
   } catch {
-    return [];
+    return [STUDENT_MEMBER];
   }
 };
 
@@ -52,7 +75,7 @@ export const MemberProvider = ({ children }) => {
     setError(null);
     try {
       const apiMembers = await memberService.fetchMembers();
-      setMembers(apiMembers);
+      setMembers([STUDENT_MEMBER, ...apiMembers]);
     } catch (err) {
       setError(err.message || 'Failed to fetch members from API');
     } finally {
@@ -62,44 +85,38 @@ export const MemberProvider = ({ children }) => {
 
   useEffect(() => {
     let isMounted = true;
-    memberService.fetchMembers().then((apiMembers) => {
-      if (isMounted && Array.isArray(apiMembers) && apiMembers.length > 0) {
-        setMembers((prev) => {
-          if (
-            !prev ||
-            prev.length < 10 ||
-            prev.some(
-              (p) =>
-                !p.fullName ||
-                !p.fullName.trim() ||
-                !p.name ||
-                !p.avatar ||
-                p.source !== 'DummyJSON API'
-            )
-          ) {
-            return apiMembers;
-          }
-          return prev.map((m, idx) => {
-            const resolved =
-              (m.fullName && m.fullName.trim()) ||
-              (m.name && m.name.trim()) ||
-              'Library Member';
-            const phone = m.mobileNumber || m.phone || '9876543210';
-            const avatarUrl = m.avatar || m.image || MEMBER_AVATARS[idx % MEMBER_AVATARS.length];
-            return {
-              ...m,
-              fullName: resolved,
-              name: resolved,
-              mobileNumber: phone,
-              phone: phone,
-              avatar: avatarUrl,
-              image: avatarUrl,
-              status: m.status || 'Active',
-            };
+    memberService
+      .fetchMembers()
+      .then((apiMembers) => {
+        if (isMounted && Array.isArray(apiMembers) && apiMembers.length > 0) {
+          setMembers((prev) => {
+            const base = !prev || prev.length < 5 ? apiMembers : prev;
+            const merged = base.some((m) => String(m.id) === 'mem-student')
+              ? base
+              : [STUDENT_MEMBER, ...base];
+            return merged.map((m, idx) => {
+              if (String(m.id) === 'mem-student') return m;
+              const resolved =
+                (m.fullName && m.fullName.trim()) ||
+                (m.name && m.name.trim()) ||
+                'Library Member';
+              const phone = m.mobileNumber || m.phone || '9876543210';
+              const avatarUrl = m.avatar || m.image || MEMBER_AVATARS[idx % MEMBER_AVATARS.length];
+              return {
+                ...m,
+                fullName: resolved,
+                name: resolved,
+                mobileNumber: phone,
+                phone: phone,
+                avatar: avatarUrl,
+                image: avatarUrl,
+                status: m.status || 'Active',
+              };
+            });
           });
-        });
-      }
-    }).catch(() => {});
+        }
+      })
+      .catch(() => {});
     return () => {
       isMounted = false;
     };
@@ -187,19 +204,30 @@ export const MemberProvider = ({ children }) => {
     return id;
   }, []);
 
+  const value = useMemo(
+    () => ({
+      members,
+      setMembers,
+      loading,
+      error,
+      refreshMembers,
+      addMember,
+      updateMember,
+      deleteMember,
+    }),
+    [
+      members,
+      loading,
+      error,
+      refreshMembers,
+      addMember,
+      updateMember,
+      deleteMember,
+    ]
+  );
+
   return (
-    <MemberContext.Provider
-      value={{
-        members,
-        setMembers,
-        loading,
-        error,
-        refreshMembers,
-        addMember,
-        updateMember,
-        deleteMember,
-      }}
-    >
+    <MemberContext.Provider value={value}>
       {children}
     </MemberContext.Provider>
   );

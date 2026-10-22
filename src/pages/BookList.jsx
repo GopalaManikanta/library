@@ -19,7 +19,10 @@ import {
   BookCopy,
   FolderPlus,
   Layers,
+  BookmarkCheck,
+  RotateCcw,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useLibrary } from '../context/LibraryContext';
 import { Sidebar } from '../components/Sidebar';
 import {
@@ -35,6 +38,9 @@ import { ConfirmDialog } from '../components/ConfirmDialog';
 import { getVerifiedCover, generateFallbackCover } from '../services/bookService';
 
 export const BookList = () => {
+  const { currentUser } = useAuth();
+  const isStudent = currentUser?.role === 'Student';
+
   const {
     books,
     loading,
@@ -49,11 +55,17 @@ export const BookList = () => {
     addCategory,
     updateCategory,
     deleteCategory,
+    reserveBook,
+    issueBook,
+    returnBook,
+    transactions,
+    reservations,
+    cancelReservation,
   } = useLibrary();
 
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() =>
-    searchParams.get('tab') === 'categories' ? 'categories' : 'books'
+    !isStudent && searchParams.get('tab') === 'categories' ? 'categories' : 'books'
   );
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -76,6 +88,51 @@ export const BookList = () => {
   const [onlineResults, setOnlineResults] = useState([]);
   const [isSearchingOnline, setIsSearchingOnline] = useState(false);
   const [isAddingOnlineId, setIsAddingOnlineId] = useState(null);
+
+  const handleStudentBorrow = async (book) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      await issueBook({
+        memberId: currentUser?.id || 'mem-student',
+        memberEmail: currentUser?.email || 'student@library.com',
+        memberName: currentUser?.name || 'Demo Student',
+        membershipId: currentUser?.membershipId || 'LIB-STU-2026',
+        bookId: book.id,
+        issueDate: today,
+        dueDate,
+        notes: `Self-checkout via Catalog List by ${currentUser?.name || 'Student'}`,
+      });
+      const matchingRes = reservations?.find(
+        (r) =>
+          String(r.bookId) === String(book.id) &&
+          (String(r.memberId) === String(currentUser?.id) || r.memberEmail === currentUser?.email)
+      );
+      if (matchingRes) {
+        cancelReservation(matchingRes.id);
+      }
+      toast.success(`"${book.title}" checked out successfully! Return by ${dueDate}.`);
+    } catch (err) {
+      toast.error(err.message || 'Failed to borrow book');
+    }
+  };
+
+  const handleStudentReturn = async (book) => {
+    const loan = transactions?.find(
+      (t) =>
+        String(t.bookId) === String(book.id) &&
+        (String(t.memberId) === String(currentUser?.id) || t.memberEmail === currentUser?.email) &&
+        t.status === 'Active'
+    );
+    if (!loan) return;
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await returnBook(loan.id, today);
+      toast.success(`"${book.title}" returned to library shelf successfully!`);
+    } catch (err) {
+      toast.error(err.message || 'Failed to return book');
+    }
+  };
 
   useEffect(() => {
     const term = searchQuery.trim();
@@ -410,21 +467,25 @@ export const BookList = () => {
                 <span className="hidden sm:inline">Refresh</span>
               </button>
 
-              <button
-                onClick={() => setViewMode('add-category')}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition cursor-pointer"
-              >
-                <FolderPlus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Add Category</span>
-              </button>
+              {!isStudent && (
+                <>
+                  <button
+                    onClick={() => setViewMode('add-category')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 text-xs font-bold transition cursor-pointer"
+                  >
+                    <FolderPlus className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Add Category</span>
+                  </button>
 
-              <button
-                onClick={() => setViewMode('add')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm shadow-teal-600/20 transition cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Book</span>
-              </button>
+                  <button
+                    onClick={() => setViewMode('add')}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm shadow-teal-600/20 transition cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Book</span>
+                  </button>
+                </>
+              )}
             </div>
           </header>
 
@@ -483,21 +544,23 @@ export const BookList = () => {
                 <span>Books Catalog ({books.length})</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('categories');
-                  setCategorySearchQuery('');
-                }}
-                className={`px-4 py-2 rounded-xl font-bold transition cursor-pointer flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === 'categories'
-                    ? 'bg-white text-purple-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Layers className="w-4 h-4 text-purple-600" />
-                <span>Category Management ({categories.length})</span>
-              </button>
+              {!isStudent && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('categories');
+                    setCategorySearchQuery('');
+                  }}
+                  className={`px-4 py-2 rounded-xl font-bold transition cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+                    activeTab === 'categories'
+                      ? 'bg-white text-purple-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Layers className="w-4 h-4 text-purple-600" />
+                  <span>Category Management ({categories.length})</span>
+                </button>
+              )}
             </div>
 
             {activeTab === 'categories' ? (
@@ -1095,42 +1158,101 @@ export const BookList = () => {
                             </div>
 
                             <div className="flex items-center gap-1.5">
-                              {Number(book.availableCopies || 0) > 0 && (
-                                <Link
-                                  to={`/circulation?action=issue&bookId=${book.id}`}
-                                  title="Issue Volume to Member"
-                                  className="p-2 rounded-xl text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition"
-                                >
-                                  <BookOpen className="w-3.5 h-3.5" />
-                                </Link>
+                              {isStudent ? (
+                                <>
+                                  {transactions?.some(
+                                    (t) =>
+                                      String(t.bookId) === String(book.id) &&
+                                      (String(t.memberId) === String(currentUser?.id) ||
+                                        t.memberEmail === currentUser?.email) &&
+                                      t.status === 'Active'
+                                  ) ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleStudentReturn(book)}
+                                      className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition cursor-pointer flex items-center gap-1 border border-rose-200"
+                                      title="Return book to library shelf"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5 text-rose-600" />
+                                      <span>Return</span>
+                                    </button>
+                                  ) : Number(book.availableCopies || 0) > 0 ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          reserveBook(currentUser, book);
+                                          toast.success(`Reserved "${book.title}"! Please pick up within 3 days.`);
+                                        }}
+                                        className="p-2 rounded-xl border border-slate-200 hover:border-amber-400 hover:bg-amber-50 text-slate-500 hover:text-amber-700 text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                                        title="Reserve this book for counter pickup"
+                                      >
+                                        <BookmarkCheck className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleStudentBorrow(book)}
+                                        className="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                        title="Borrow book directly"
+                                      >
+                                        <BookOpen className="w-3.5 h-3.5" />
+                                        <span>Borrow</span>
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-lg border border-rose-200">
+                                      Out of Stock
+                                    </span>
+                                  )}
+
+                                  <Link
+                                    to={`/books/${book.id}`}
+                                    title="View Details"
+                                    className="p-2 rounded-xl text-slate-500 hover:text-teal-700 hover:bg-teal-50 border border-slate-200 hover:border-teal-200 transition"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </Link>
+                                </>
+                              ) : (
+                                <>
+                                  {Number(book.availableCopies || 0) > 0 && (
+                                    <Link
+                                      to={`/circulation?action=issue&bookId=${book.id}`}
+                                      title="Issue Volume to Member"
+                                      className="p-2 rounded-xl text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 transition"
+                                    >
+                                      <BookOpen className="w-3.5 h-3.5" />
+                                    </Link>
+                                  )}
+
+                                  <Link
+                                    to={`/books/${book.id}`}
+                                    title="View Details"
+                                    className="p-2 rounded-xl text-slate-500 hover:text-teal-700 hover:bg-teal-50 border border-slate-200 hover:border-teal-200 transition"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </Link>
+
+                                  <button
+                                    onClick={() => {
+                                      setEditingBook(book);
+                                      setViewMode('edit');
+                                    }}
+                                    title="Edit Book"
+                                    className="p-2 rounded-xl text-slate-500 hover:text-teal-700 hover:bg-teal-50 border border-slate-200 hover:border-teal-200 transition cursor-pointer"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => setDeletingBook(book)}
+                                    title="Delete Book"
+                                    className="p-2 rounded-xl text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
                               )}
-
-                              <Link
-                                to={`/books/${book.id}`}
-                                title="View Details"
-                                className="p-2 rounded-xl text-slate-500 hover:text-teal-700 hover:bg-teal-50 border border-slate-200 hover:border-teal-200 transition"
-                              >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </Link>
-
-                              <button
-                                onClick={() => {
-                                  setEditingBook(book);
-                                  setViewMode('edit');
-                                }}
-                                title="Edit Book"
-                                className="p-2 rounded-xl text-slate-500 hover:text-teal-700 hover:bg-teal-50 border border-slate-200 hover:border-teal-200 transition cursor-pointer"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                onClick={() => setDeletingBook(book)}
-                                title="Delete Book"
-                                className="p-2 rounded-xl text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
                             </div>
                           </div>
                         </div>
@@ -1156,17 +1278,17 @@ export const BookList = () => {
                       </button>
 
                       <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }).map((_, i) => (
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
                           <button
-                            key={i + 1}
-                            onClick={() => setCurrentPage(i + 1)}
+                            key={`page-${pg}`}
+                            onClick={() => setCurrentPage(pg)}
                             className={`w-8 h-8 rounded-xl text-xs font-bold transition cursor-pointer ${
-                              currentPage === i + 1
+                              currentPage === pg
                                 ? 'bg-teal-600 text-white shadow-xs'
                                 : 'border border-slate-200 hover:bg-slate-50 text-slate-600'
                             }`}
                           >
-                            {i + 1}
+                            {pg}
                           </button>
                         ))}
                       </div>

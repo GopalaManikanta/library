@@ -29,7 +29,7 @@ export const ForgotPassword = () => {
   const onStep1Submit = (data) => {
     setIsSubmitting(true);
     setTimeout(() => {
-      const users = JSON.parse(localStorage.getItem('lms_users_db') || '[]');
+      const users = JSON.parse(localStorage.getItem('lms_users_db_v2') || localStorage.getItem('lms_users_db') || '[]');
       const user = users.find(u => u.email.toLowerCase() === data.email.toLowerCase());
 
       setIsSubmitting(false);

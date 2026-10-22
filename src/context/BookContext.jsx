@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { bookService, getVerifiedCover } from '../services/bookService';
 
 const BookContext = createContext(null);
@@ -339,26 +339,43 @@ export const BookProvider = ({ children }) => {
     return deleted;
   }, []);
 
+  const value = useMemo(
+    () => ({
+      books,
+      setBooks,
+      categories,
+      setCategories,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      loading,
+      error,
+      refreshBooks,
+      addBook,
+      updateBook,
+      deleteBook,
+      searchGoogleBooks,
+      searchLocalBooks,
+    }),
+    [
+      books,
+      categories,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      loading,
+      error,
+      refreshBooks,
+      addBook,
+      updateBook,
+      deleteBook,
+      searchGoogleBooks,
+      searchLocalBooks,
+    ]
+  );
+
   return (
-    <BookContext.Provider
-      value={{
-        books,
-        setBooks,
-        categories,
-        setCategories,
-        addCategory,
-        updateCategory,
-        deleteCategory,
-        loading,
-        error,
-        refreshBooks,
-        addBook,
-        updateBook,
-        deleteBook,
-        searchGoogleBooks,
-        searchLocalBooks,
-      }}
-    >
+    <BookContext.Provider value={value}>
       {children}
     </BookContext.Provider>
   );
